@@ -1,0 +1,151 @@
+o-----------------------------------------------------------------------------o
+| Alt+Tab Alternative                                                         |
+|                                                                             |
+| Details:                                                                    |
+| --------                                                                    |
+| Use Alt+Tab / Alt+Shift+Tab to bring the main AltTab window, use            |
+|        Tab key to select next row                                           |
+|  Shift+Tab key to select previous row                                       |
+|                                                                             |
+x-----------------------------------------------------------------------------x
+| Keys                 | Description                                          |
+|----------------------+------------------------------------------------------|
+| Home/PageUp          | Move selection to first row                          |
+| End/PageDown         | Move selection to last row                           |
+| Up                   | Move selection to previous row                       |
+| Down                 | Move selection to next row                           |
+|----------------------+------------------------------------------------------|
+| Del                  | Terminate currently selected process                 |
+| Shift+Del            | Forcefully terminate currently selected process      |
+|----------------------+------------------------------------------------------|
+| NumpadDiv (/)        | Terminate all processes                              |
+| Shift+NumpadDiv (/)  | Terminate all processes forcefully                   |
+|----------------------+------------------------------------------------------|
+| AlphaNumeric         | Filter windows while typing, can delete last typed   |
+|                      | char using backspace.                                |
+|                      | Search string is displayed on static control.        |
+|----------------------+------------------------------------------------------|
+| F1 (FunctionKey)     | Display help file in viewer.                         |
+| F2 (FunctionKey)     | Display settings dialog.                             |
+|----------------------+------------------------------------------------------|
+| Shift+NumpadSub (-)  | Hide the selected window.                            |
+| Shift+NumpadAdd (+)  | Unhide the selected window.                          |
+| Shift+NumpadMult (*) | Toggle hidden windows.                               |
+|                      | Note: NOT added these hidden features in ContextMenu |
+|                      |   intentionally.                                     |
+x-----------------------------------------------------------------------------x
+|                                                                             |
+|                                                                             |
+| Tray Menu                                                                   |
+| ---------                                                                   |
+|                                                                             |
+| +======================+                                                    |
+| | About                | - Displays AboutDialog                             |
+| |----------------------|                                                    |
+| | ReadMe               | - Displays ReadMe File                             |
+| | Help                 | - Displays Help File                               |
+| | Release Notes        | - Displays Release Notes File                      |
+| |----------------------|                                                    |
+| | Settings             | - Settings Dialog                                  |
+| | Disable              | - Disable AltTabAlternative until enable it again  |
+| | Check for updates    | - Check for updates                                |
+| | Run at statup        | - Run at startup                                   |
+| |----------------------|                                                    |
+| | Exit                 | - Exit Application                                 |
+| +======================+                                                    |
+|                                                                             |
+|                                                                             |
+| Gui ContextMenu                                                             |
+| ---------------                                                             |
+|                                                                             |
+| +======================+                                                    |
+| | About                | - Displays AboutDialog                             |
+| |----------------------|                                                    |
+| | ReadMe               | - Displays ReadMe File                             |
+| | Help              F1 | - Displays Help File                               |
+| | Release Notes        | - Displays Release Notes File                      |
+| |----------------------|                                                    |
+| | Settings          F2 | - Settings Dialog                                  |
+| |----------------------|                                                    |
+| | Exit                 | - Exit Application                                 |
+| +======================+                                                    |
+|                                                                             |
+|                                                                             |
+| ListView ContextMenu                                                        |
+| --------------------                                                        |
+|                                                                             |
+| +==========================================+                                |
+| | Close Window                         Del |                                |
+| | Kill Process                   Shift+Del |                                |
+| |------------------------------------------|                                |
+| | Close All Windows          NumpadDiv (/) |                                |
+| | Kill All Processes   Shift+NumpadDiv (/) |                                |
+| |------------------------------------------|                                |
+| | Remaining are duplicates...              |                                |
+| +==========================================+                                |
+|                                                                             |
+|                                                                             |
+| Configuration INI File                                                      |
+| ----------------------                                                      |
+| Used to read/write the settings of application.                             |
+|                                                                             |
+|                                                                             |
+| Settings Dialog                                                             |
+| ---------------                                                             |
+|                                                                             |
+x-----------------------------------------------------------------------------x
+| Setting              | Description                                          |
+|----------------------+------------------------------------------------------|
+| SearchString Font    | Font (name, size, color & style) details of          |
+|                      | SearchString control.                                |
+|----------------------+------------------------------------------------------|
+| ListView Font        | Font (name, size, color, background color & style)   |
+|                      | of ListView control.                                 |
+|----------------------+------------------------------------------------------|
+| Show/Hide StatusBar  | StatusBar has 3 parts, to display the following:     |
+|                      |   1. Every user action                               |
+|                      |   2. SelectedWindowPos/TotalCount                    |
+|                      |   3. Selected Window's ProcessID                     |
+|                      |                                                      |
+|                      | Note: Showing every user action in status bar is not |
+|                      |   completed yet.                                     |
+|----------------------+------------------------------------------------------|
+| PromptTerminateAll   | Prompts for confirmation before terminating.         |
+|----------------------+------------------------------------------------------|
+| Window Transparency  | Indicate the degree of transparency.                 |
+|                      |   0 makes the window invisible.                      |
+|                      | 255 makes it opaque.                                 |
+|----------------------+------------------------------------------------------|
+| Window Width (%)     | Main window width wrt percentage of screen width.    |
+|----------------------+------------------------------------------------------|
+| Window Height Max (%)| Main window maximum height wrt percentage of screen  |
+|                      |   height.                                            |
+|                      |                                                      |
+|                      | If there are more number of processes which exceeds  |
+|                      |   the WindowHeightMax to accommodate all the tasks   |
+|                      |   then resize the window to WindowHeightMax according|
+|                      |   scroll bar presense.                               |
+|----------------------+------------------------------------------------------|
+| Check for updates    | How frequently check for updates.                    |
+|                      | Available Options:                                   |
+|                      |   Startup/Daily/Weekly/Never. Default: Weekly        |
+|                      |                                                      |
+|                      |   Startup : At startup only                          |
+|                      |     Daily : For every 24 hrs since the last run      |
+|                      |    Weekly : For every 7 days since the last run      |
+|                      |     Never : Never check for updates                  |
+|----------------------+------------------------------------------------------|
+| Reset                | Reset settings to default settings.                  |
+|----------------------+------------------------------------------------------|
+| Font/Background color| Hidden windows are displayed using these font fore   |
+| for hidden windows   |  ground & background.                                |
+|----------------------+------------------------------------------------------|
+| Import/Export        | Import/Export settings from/to an external INI file. |
+x-----------------------------------------------------------------------------x
+|                                                                             |
+|                                                                             |
+| Other Details:                                                              |
+| --------------                                                              |
+| - None                                                                      |
+|                                                                             |
+o-----------------------------------------------------------------------------o
