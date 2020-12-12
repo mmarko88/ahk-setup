@@ -1,0 +1,46 @@
+﻿BundleFormat: 1
+Name: Default
+Description: Default bundle for Lintalist
+Author: Lintalist
+TitleMatch: 
+Patterns:
+- LLPart1:     //TODO: Test when invalid MUP user
+    //TODO: Regular test
+    //TODO: wrong identity
+    //TODO: no mandatory parameters
+    //TODO: no data returned from fetchDistributionList
+    //TODO: all invalid MUP users
+    //TODO: validate category and subcategory
+    //TODO: email template is null
+    //TODO: email template is random string
+    //TODO: bcc addresses
+
+  LLPart2: 
+  LLKey: 
+  LLShorthand: testsTodo
+  LLScript: 
+- LLPart1: Disconnect all network drives
+  LLPart2: net use / delete *
+  LLKey: 
+  LLShorthand: disconn
+  LLScript: 
+
+- LLPart1: Tab shifter intellij shourcuts
+  LLPart2: alt+shift+] - shift tab right
+alt+shift+[ - shift tab left
+alt+shift+P - shift tab up
+alt+shift+; - shift tab down
+ctrl+alt+[ - stretch splitter left
+ctrl+alt+] - stretch splitter right
+ctrl+alt+= - equal size splitter
+alt+shift+M - maximize/restore splitter
+  LLKey: 
+  LLShorthand: 
+  LLScript:
+- LLPart1: Najbolje tastature:
+Razer BlackWidow Elite
+Corsair K95 RGB PLATINUM XT
+  LLPart2: 
+  LLKey: 
+  LLShorthand: 
+  LLScript:

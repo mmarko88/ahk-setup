@@ -74,121 +74,131 @@ Gui, Add, Text,     w100 h30 x6 y8, Search`:
 Gui, Add, Edit,     w500 h30 x110 y4 gSearchChange vsearch,
 Gui, Add, ListView, w1200 h510 x4 y40 -VScroll -HScroll -Hdr -Multi Count10 AltSubmit gListViewClick, index|title|proc
 
+;#n::dispDesktopNum()
+
+hVirtualDesktopAccessor := DllCall("LoadLibrary", Str, "VirtualDesktopAccessor.dll", "Ptr") 
+ViewSwitchTo := DllCall("GetProcAddress", Ptr, hVirtualDesktopAccessor, AStr, "ViewSwitchTo", "Ptr")
+
+
+getCurrentDesktopNum(){ 
+  RegRead, cur, HKEY_CURRENT_USER\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\SessionInfo\1\VirtualDesktops, CurrentVirtualDesktop
+  RegRead, all, HKEY_CURRENT_USER\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\VirtualDesktops, VirtualDesktopIDs
+  ix := floor(InStr(all,cur) / strlen(cur))
+  return ix
+}
+
 ;----------------------------------------------------------------------
 ;
 ; Alt tab to activate.
 ;
 #'::
+  search =
+  lastSearch =
+  debounced := true
+  allwindows := Object()
+  hiddenWindows := Object()
 
-search =
-lastSearch =
-debounced := true
-allwindows := Object()
-hiddenWindows := Object()
+  GuiControl, , Edit1
+  Gui, Show, Center, Window Switcher
+  WinGet, switcher_id, ID, A
+  WinSet, AlwaysOnTop, On, ahk_id %switcher_id%
+  ControlFocus, Edit1, ahk_id %switcher_id%
 
-GuiControl, , Edit1
-Gui, Show, Center, Window Switcher
-WinGet, switcher_id, ID, A
-WinSet, AlwaysOnTop, On, ahk_id %switcher_id%
-ControlFocus, Edit1, ahk_id %switcher_id%
-
-Loop
-{
-  Input, input, L1, {enter}{esc}{tab}{backspace}{delete}{up}{down}{left}{right}{home}{end}{F4}
-
-  if ErrorLevel = EndKey:enter
+  Loop
   {
-    ActivateWindow()
-    break
-  }
-  else if ErrorLevel = EndKey:escape
-  {
-    Gui Cancel
-    break
-  }
-  else if ErrorLevel = EndKey:tab
-  {
-    ControlFocus, SysListView321, ahk_id %switcher_id%
+    Input, input, L1, {enter}{esc}{tab}{backspace}{delete}{up}{down}{left}{right}{home}{end}{F4}
 
-    ; When on last row, wrap tab next to top of list.
-    if LV_GetNext(0) = LV_GetCount()
+    if ErrorLevel = EndKey:enter
     {
-      LV_Modify(1, "Select")
-      LV_Modify(1, "Focus")
-    } else {
+      ActivateWindow()
+      break
+    }
+    else if ErrorLevel = EndKey:escape
+    {
+      Gui Cancel
+      break
+    }
+    else if ErrorLevel = EndKey:tab
+    {
+      ControlFocus, SysListView321, ahk_id %switcher_id%
+
+      ; When on last row, wrap tab next to top of list.
+      if LV_GetNext(0) = LV_GetCount()
+      {
+        LV_Modify(1, "Select")
+        LV_Modify(1, "Focus")
+      } else {
+        ControlSend, SysListView321, {down}, ahk_id %switcher_id%
+      }
+
+      continue
+    }
+    else if ErrorLevel = EndKey:backspace
+    {
+      ControlFocus, Edit1, ahk_id %switcher_id%
+
+      if GetKeyState("Ctrl","P")
+        chars = {blind}^{Left}{Del} ; courtesy of VxE: http://www.autohotkey.com/board/topic/35458-backward-search-delete-a-word-to-the-left/#entry223378
+      else
+        chars = {backspace}
+
+      ControlSend, Edit1, %chars%, ahk_id %switcher_id%
+
+      continue
+    }
+    else if ErrorLevel = EndKey:delete
+    {
+      ControlFocus, Edit1, ahk_id %switcher_id%
+      keys := AddModifierKeys("{del}")
+      ControlSend, Edit1, %keys%, ahk_id %switcher_id%
+      continue
+    }
+    else if ErrorLevel = EndKey:up
+    {
+      ControlFocus, SysListView321, ahk_id %switcher_id%
+      ControlSend, SysListView321, {up}, ahk_id %switcher_id%
+      continue
+    }
+    else if ErrorLevel = EndKey:down
+    {
+      ControlFocus, SysListView321, ahk_id %switcher_id%
       ControlSend, SysListView321, {down}, ahk_id %switcher_id%
+      continue
+    }
+    else if ErrorLevel = EndKey:left
+    {
+      ControlFocus, Edit1, ahk_id %switcher_id%
+      keys := AddModifierKeys("{left}")
+      ControlSend, Edit1, %keys%, ahk_id %switcher_id%
+      continue
+    }
+    else if ErrorLevel = EndKey:right
+    {
+      ControlFocus, Edit1, ahk_id %switcher_id%
+      keys := AddModifierKeys("{right}")
+      ControlSend, Edit1, %keys%, ahk_id %switcher_id%
+      continue
+    }
+    else if ErrorLevel = EndKey:home
+    {
+      send % AddModifierKeys("{home}")
+      continue
+    }
+    else if ErrorLevel = EndKey:end
+    {
+      send % AddModifierKeys("{end}")
+      continue
+    }
+    else if ErrorLevel = EndKey:F4
+    {
+      if GetKeyState("Alt","P")
+        ExitApp
     }
 
-    continue
-  }
-  else if ErrorLevel = EndKey:backspace
-  {
     ControlFocus, Edit1, ahk_id %switcher_id%
-
-    if GetKeyState("Ctrl","P")
-      chars = {blind}^{Left}{Del} ; courtesy of VxE: http://www.autohotkey.com/board/topic/35458-backward-search-delete-a-word-to-the-left/#entry223378
-    else
-      chars = {backspace}
-
-    ControlSend, Edit1, %chars%, ahk_id %switcher_id%
-
-    continue
+    Control, EditPaste, %input%, Edit1, ahk_id %switcher_id%
   }
-  else if ErrorLevel = EndKey:delete
-  {
-    ControlFocus, Edit1, ahk_id %switcher_id%
-    keys := AddModifierKeys("{del}")
-    ControlSend, Edit1, %keys%, ahk_id %switcher_id%
-    continue
-  }
-  else if ErrorLevel = EndKey:up
-  {
-    ControlFocus, SysListView321, ahk_id %switcher_id%
-    ControlSend, SysListView321, {up}, ahk_id %switcher_id%
-    continue
-  }
-  else if ErrorLevel = EndKey:down
-  {
-    ControlFocus, SysListView321, ahk_id %switcher_id%
-    ControlSend, SysListView321, {down}, ahk_id %switcher_id%
-    continue
-  }
-  else if ErrorLevel = EndKey:left
-  {
-    ControlFocus, Edit1, ahk_id %switcher_id%
-    keys := AddModifierKeys("{left}")
-    ControlSend, Edit1, %keys%, ahk_id %switcher_id%
-    continue
-  }
-  else if ErrorLevel = EndKey:right
-  {
-    ControlFocus, Edit1, ahk_id %switcher_id%
-    keys := AddModifierKeys("{right}")
-    ControlSend, Edit1, %keys%, ahk_id %switcher_id%
-    continue
-  }
-  else if ErrorLevel = EndKey:home
-  {
-    send % AddModifierKeys("{home}")
-    continue
-  }
-  else if ErrorLevel = EndKey:end
-  {
-    send % AddModifierKeys("{end}")
-    continue
-  }
-  else if ErrorLevel = EndKey:F4
-  {
-    if GetKeyState("Alt","P")
-      ExitApp
-  }
-
-  ControlFocus, Edit1, ahk_id %switcher_id%
-  Control, EditPaste, %input%, Edit1, ahk_id %switcher_id%
-}
-
-exit
-
+Return
 
 ;----------------------------------------------------------------------
 ;
@@ -302,11 +312,23 @@ GetAllWindows()
     StringReplace, title, title, |, -, all
 
     procName := GetProcessName(wid)
-    windows.Insert({ "id": wid, "title": title, "procName": procName, "listid" : cnt })
+
+    printCnt := cnt
+    if (printCnt < 10)
+      printCnt := "0" + cnt
+
+    windows.Insert({ "id": wid, "title": title, "procName": procName, "listid" : printCnt })
     cnt := cnt + 1
   }
 
   return windows
+}
+
+getWid(pProcName) {
+  MsgBox, %allWindows%
+  For id, data in allwindows {
+    MsgBox, id
+  } 
 }
 
 IsWindowCloaked(hwnd) {
@@ -413,16 +435,14 @@ FilterWindowList(list, criteria)
       title := window.title
       procName := window.procName
       listid := window.listid
-      
-
-      ; don't add the windows not matching the search string
-      titleAndProcName = %listid% %procName% %title%
-
-      For idx, expr in expressions
-      {
-        if RegExMatch(titleAndProcName, expr) = 0
-          continue atNextWindow
-      }
+    
+       ; don't add the windows not matching the search string
+       titleAndProcName = %listid% %procName% %title%
+       For idx, expr in expressions
+       {
+         if RegExMatch(titleAndProcName, expr) = 0
+           continue atNextWindow
+       }
     }
 
     doScore := scoreMatches && (criteria <> "") && (lastTermInSearch <> "")
@@ -433,6 +453,13 @@ FilterWindowList(list, criteria)
 
   return (doScore ? SortByScore(filteredList) : filteredList)
 }
+
+IsNum(x) {
+   If x is Number
+      Return 1
+   Return 0
+}
+
 
 ;----------------------------------------------------------------------
 ;
@@ -499,27 +526,26 @@ SortByScore(list)
 ;
 ActivateWindow()
 {
-  global windows
+  global windows, ViewSwitchTo
 
   Gui Submit
   rowNum:= LV_GetNext(0)
   wid := windows[rowNum].id
-
-  ; In some cases, calling WinMinimize minimizes the window, but it retains its
-  ; focus preventing WinActivate from raising window.
-  IfWinActive, ahk_id %wid%
-  {
-    WinGet, state, MinMax, ahk_id %wid%
-    if (state = -1)
-    {
-      WinRestore, ahk_id %wid%
-    }
-  } else {
-    WinActivate, ahk_id %wid%
-    WinActivate, ahk_id %wid% ; second time if it is different virtual desktop
-  }
+  
+  DllCall(ViewSwitchTo, UInt, wid)
 
   LV_Delete()
+
+	SetTimer, osdCurrentDesktop, 200
+
+	Return
+
+
+osdCurrentDesktop:
+	SetTimer, osdCurrentDesktop, Off
+  currDesk := getCurrentDesktopNum() + 1
+  showOsd("Desktop: " . currDesk)
+	return
 }
 
 ;----------------------------------------------------------------------
@@ -712,4 +738,30 @@ StrDiff(str1, str2, maxOffset:=5) {
   }
 
   return ((n0 + m0)/2 - lcs) / (n0 > m0 ? n0 : m0)
+}
+
+showOsd(textToShow) {
+	Gui, Osd: Destroy
+  CustomColor := 000000  ; Can be any RGB color (it will be made transparent below). 
+	Gui, Osd: +AlwaysOnTop +LastFound +Owner -Caption
+	Gui, Osd: Color, %CustomColor% 
+	Gui, Osd: Font, cFFFFFF S48, Verdana
+
+  Gui, Osd: add, Text, center center x2 y2 c000000 BackgroundTrans, %textToShow%
+  Gui, Osd: add, Text, center center x0 y0 cLime BackgroundTrans, %textToShow%
+
+	WinSet, TransColor, %CustomColor%  250
+	WinSet, ExStyle, +0x20, Output
+	Gui, Osd: Show, center center NoActivate , Output
+ 
+	SetTimer, RemoveToolTip, 800
+
+	Return
+
+
+RemoveToolTip:
+	SetTimer, RemoveToolTip, Off
+	Gui, Osd: Destroy
+	return
+	
 }

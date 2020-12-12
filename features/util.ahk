@@ -100,21 +100,93 @@ AlwaysOnTop()
 
 }
 
-ToggleWinMinimize(TheWindowTitle)
-{
-SetTitleMatchMode,2
-DetectHiddenWindows, Off
-IfWinActive, %TheWindowTitle%
-{
-WinMinimize, %TheWindowTitle%
+; work in progress
+ToggleActiveWindow() {
+;   static lastActiveWinId := "noID"
+;   SetTitleMatchMode, 2
+;   DetectHiddenWindows, Off
+;   WinGet, curr_ActWinId, ID, A
+;
+;   if (lastActiveWinId == "NoId") {
+;      lastActiveWinId = curr_ActWinId
+;   }
+;
+;   If WinActive, %lastActiveWinId% {
+;      WinMinimize, 
+;   }
+;   Else {
+;      IfWinExist, {
+;         DllCall("SwitchToThisWindow", "UInt", lastActiveWinId, "UInt", 1)
+;      }
+;   }
 }
-Else
-{
-IfWinExist, %TheWindowTitle%
-{
-WinGet, winid, ID, %TheWindowTitle%
-DllCall("SwitchToThisWindow", "UInt", winid, "UInt", 1)
+
+toggleTaskManager() {
+	If WinExist("Task Manager") {
+		WinKill
+	}
+	else {
+		Run, taskmgr,,
+	}
+	;Else
+	;	
 }
+
+startProgram(title, location) {
+	;if title != '' and WinExist(title)
+	;	WinActivate,
+	;else {
+		Run, %location%
+	;}
 }
-Return
+
+changeOpasity(value) {
+	MouseGetPos,,, hwndUnderCursor
+	WinGet, currOpacity, Transparent, ahk_id %hwndUnderCursor%
+	If !(curropacity)
+		currOpacity := 255
+	currOpacity := currOpacity + value
+	currOpacity := (currOpacity < 25) ? 25 : (currOpacity >= 255) ? 255 : currOpacity
+	WinSet, Transparent, %currOpacity%, ahk_id %hwndUnderCursor%
+}
+
+; not used currently
+removeTitleBar() {
+	WinGet, actWinId, ID, A
+	WinGet, Title, Style, ahk_id %actWinId%
+	If (Title & 0xC00000)
+		WinSet, Style, -0xC00000, ahk_id  %actWinId%
+	Else
+		WinSet, Style, +0xC00000, ahk_id  %actWinId%
+	; Redraw the window
+	WinGetPos,,,, Height, ahk_id  %actWinId%
+	WinMove, ahk_id  %actWinId%,,,,, % Height - 1
+	WinMove, ahk_id  %actWinId%,,,,, % Height
+}
+
+
+ToggleTaskBarAndStart()
+{
+   static action := True
+
+   static ABM_SETSTATE := 0xA, ABS_AUTOHIDE := 0x1, ABS_ALWAYSONTOP := 0x2
+   VarSetCapacity(APPBARDATA, size := 2*A_PtrSize + 2*4 + 16 + A_PtrSize, 0)
+   NumPut(size, APPBARDATA) 
+   NumPut(WinExist("ahk_class Shell_TrayWnd"), APPBARDATA, A_PtrSize)
+   NumPut(action ? ABS_AUTOHIDE : ABS_ALWAYSONTOP, APPBARDATA, size - A_PtrSize)
+
+
+   DllCall("Shell32\SHAppBarMessage", UInt, ABM_SETSTATE, Ptr, &APPBARDATA)
+
+   ;WinActivate, ahk_id %ActiveId%
+   action := not action
+
+}
+
+
+lockWorkStationAndTurnOffScreen() {
+ Sleep, 200
+ DllCall("LockWorkStation")
+ Sleep, 200
+ SendMessage,0x112,0xF170,2,,Program Manager
 }

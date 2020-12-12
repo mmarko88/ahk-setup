@@ -1,0 +1,30 @@
+﻿BundleFormat: 1
+Name: Default
+Description: Default bundle for Lintalist
+Author: Lintalist
+TitleMatch:
+Patterns:
+- LLPart1: This is Snippet Part 1, refer to documentation for further info.
+  LLPart2: This is Snippet Part 2
+  LLKey:
+  LLShorthand:
+  LLScript:
+- LLPart1: Disconnect all network drives
+  LLPart2: net use / delete *
+  LLKey: 
+  LLShorthand: disconn
+  LLScript:
+- LLPart1: 
+  LLPart2: 
+  LLKey: 
+  LLShorthand: 
+  LLScript:     //TODO: Test when invalid MUP user
+    //TODO: Regular test
+    //TODO: wrong identity
+    //TODO: no mandatory parameters
+    //TODO: no data returned from fetchDistributionList
+    //TODO: all invalid MUP users
+    //TODO: validate category and subcategory
+    //TODO: email template is null
+    //TODO: email template is random string
+    //TODO: bcc addresses

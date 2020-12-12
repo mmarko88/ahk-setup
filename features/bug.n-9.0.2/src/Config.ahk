@@ -33,16 +33,16 @@ Config_init() {
   }
   Config_barTransparency   := "off"
   Config_barCommands       := "Run, explore " Main_docDir ";Monitor_toggleBar();Reload;ExitApp"
-  Config_readinBat         := False
-  Config_readinCpu         := False
+  Config_readinBat         := True
+  Config_readinCpu         := True
   Config_readinDate        := True
   Config_readinDateFormat  := "ddd, dd. MMM. yyyy"
   Config_readinDiskLoad    := False
   Config_readinMemoryUsage := False
-  Config_readinNetworkLoad := False
+  Config_readinNetworkLoad := True
   Config_readinTime        := True
   Config_readinTimeFormat  := "HH:mm"
-  Config_readinVolume      := False
+  Config_readinVolume      := True
   Config_readinInterval    := 30000
 
   ;; Windows ui elements
@@ -57,7 +57,7 @@ Config_init() {
                                 ;; but is dependant on the setting in the `Display control panel` of Windows under `Appearance and Personalization`.
 
   ;; Window arrangement
-  Config_viewNames          := "1;2;3;4;5;6;7;8;9"
+  Config_viewNames          := "1;2;3;4;5;6;7;8;9;0"
   Config_layout_#1          := "[]=;tile"
   Config_layout_#2          := "[M];monocle"
   Config_layout_#3          := "><>;"
