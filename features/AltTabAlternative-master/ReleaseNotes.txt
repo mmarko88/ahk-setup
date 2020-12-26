@@ -1,0 +1,89 @@
+Known Limitations
+-----------------
+- Not handled Alt+Ctrl+Tab
+
+
+Known Issues
+------------
+- Available @ https://sourceforge.net/p/alttabalternative/tickets/
+
+
+2017.3 new features and bug fixes
+---------------------------------
++ Used fuzzy string matching algorithm to search the search string in the
+  process name / title and gives the degree of similarity how similar search
+  string and process name/title.
+  Ex | 100 % means exact match
+     |  80 % would cause "files" to match "filas" and so on ...
+  Note: Set the fuzzy string matching percent in the settings dialog.
+
+2017.2 new features and bug fixes
+---------------------------------
++ Can specify group of similar applications to switch between these windows
+  using Alt+Backtick / Alt+Shift+Backtick.
+  Ex | Switch between notepad.exe/notepad++.exe processes using Alt+Backtick if
+     | notepad.exe and notepad++.exe are marked as similar processes.
+  Use settings dialog to define similar process groups.
++ Removed system menu for Alt+Tab window.
++ Always Run At Startup when the application starts.
+
+2017.1 new features and bug fixes
+---------------------------------
++ Introduced new hotkey Alt+Backtick, Alt+Shift+Backtick to switch
+  between windows of the same application. (Backtick: `, the key above Tab).
++ Backtick/Shift+Backtick moves the selection to the next/previous window of
+  the same application in Alt+Tab/Alt+Shift+Tab window list.
+
+2016.3 new features and bug fixes
+---------------------------------
++ Hide/un-hide windows using keyboard shortcuts only.
+  Intentionally NOT providing a way to hide/un-hide windows from context menu.
++ Can change the font color / background color for hidden windows in list view.
++ Added StatusBar to display the following in parts:
+  1. Every user action (partially done)
+  2. SelectedWindowPos/TotalCount
+  3. Selected Window's ProcessID
+  NOTE: This funcationality is partially done.
++ Check to show/hide the status bar.
++ Display tooltips on mouseover in settings dialog.
++ Help file is HTML format, earlier it was text format.
+- Hidden windows functionality hotkeys should be available only when
+  AltTabAlternative is visible.
+- Display browser (Chrome, IE, and etc) in AltTab windows list when watching
+  videos with fullscreen mode.
+
+2016.2 new features and bug fixes
+---------------------------------
++ Provided configuration/setting INI file & UI.
+  a. Now user can configure font style of SearchString, ListView and its
+     background color.
+  b. Prompts for confirmation before terminating all processes.
+  c. Window Transparency.
+  d. Window Width & Window Height Maximum percentage wrt screen resolution.
++ Handled Alt+Esc.
++ Settings go to AppData folder and can export settings to an external file.
++ Settings can be imported from an external file.
++ Show at least one item in ListView even there are no windows.
++ Check for updates menu item in tray menu.
++ How frequently check for updates in settings dialog.
++ Added Gui and ListView context menus.
+- Display proper window icon for most of the windows.
+- Fixed: Process is terminated on pressing Del key instead of default action on
+  that window. Ex: Skype, Cicso Jabber.
+
+
+2016.1 new features and bug fixes
+---------------------------------
++ Run at startup.
++ Added enable/disable toggle menu to turn on/off AltTabAlternative Hotkeys.
+- Fixed ListView refresh/update issue with new windows list if any process is
+  created or terminated when key Delete pressed/with any other reason.
+- Fixed Window title for the **file properties** window.
+- Terminate all processes using key NumpadDiv (/), hold Shift to terminate
+  forcefully.
+
+
+PS
+--
+'+' : indicates new feature
+'-' : indicates bug fixed

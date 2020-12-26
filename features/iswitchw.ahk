@@ -1,15 +1,18 @@
-;----------------------------------------------------------------------
-;
-; User configuration
-;
+#NoEnv  ; Recommended for performance and compatibility with future AutoHotkey releases.
+;#Warn  ; Enable warnings to assist with detecting common errors.
+SendMode Input  ; Recommended for new scripts due to its superior speed and reliability.
+SetWorkingDir %A_ScriptDir%  ; Ensures a consistent starting directory.
 #SingleInstance force
-#NoTrayIcon
+
+#Include chromeFunctions.ahk
+#Include virtualDesktop.ahk
+
 
 ; Window titles containing any of the listed substrings are filtered out from
 ; the initial list of windows presented when iswitchw is activated. Can be
 ; useful for things like  hiding improperly configured tool windows or screen
 ; capture software during demos.
-filters := []
+filters := ["Window Switcher"]
 
 ; Set this to true to update the list of windows every time the search is
 ; updated. This is usually not necessary and creates additional overhead, so
@@ -57,70 +60,109 @@ useMultipleTerms := true
 ;----------------------------------------------------------------------
 
 #NoEnv  ; Recommended for performance and compatibility with future AutoHotkey releases.
-; #Warn  ; Enable warnings to assist with detecting common errors.
+;#Warn  ; Enable warnings to assist with detecting common errors.
 SendMode Input  ; Recommended for new scripts due to its superior speed and reliability.
 SetWorkingDir %A_ScriptDir%  ; Ensures a consistent starting directory.
 Global tClass:="SysShadow,Alternate Owner,tooltips_class32,DummyDWMListenerWindow,EdgeUiInputTopWndClass,ApplicationFrameWindow,TaskManagerWindow,Qt5QWindowIcon,Windows.UI.Core.CoreWindow,WorkerW,Progman,Internet Explorer_Hidden,Shell_TrayWnd" ; HH Parent
-
-DetectHiddenWindows, On
-AutoTrim, off
-
-Gui, +LastFound +AlwaysOnTop -Caption +ToolWindow
-Gui, Color, black,black
-WinSet, Transparent, 225
-Gui, Font, s16 cEEE8D5 bold, Consolas
-Gui, Margin, 4, 4
-Gui, Add, Text,     w100 h30 x6 y8, Search`:
-Gui, Add, Edit,     w500 h30 x110 y4 gSearchChange vsearch,
-Gui, Add, ListView, w1200 h510 x4 y40 -VScroll -HScroll -Hdr -Multi Count10 AltSubmit gListViewClick, index|title|proc
-
-;#n::dispDesktopNum()
+;global cycleCurrentIdx := 1
 
 hVirtualDesktopAccessor := DllCall("LoadLibrary", Str, "VirtualDesktopAccessor.dll", "Ptr") 
 ViewSwitchTo := DllCall("GetProcAddress", Ptr, hVirtualDesktopAccessor, AStr, "ViewSwitchTo", "Ptr")
+GetWindowDesktopNumberProc := DllCall("GetProcAddress", Ptr, hVirtualDesktopAccessor, AStr, "GetWindowDesktopNumber", "Ptr")
+GoToDesktopNumberProc := DllCall("GetProcAddress", Ptr, hVirtualDesktopAccessor, AStr, "GoToDesktopNumber", "Ptr")
+GetCurrentDesktopNumberProc := DllCall("GetProcAddress", Ptr, hVirtualDesktopAccessor, AStr, "GetCurrentDesktopNumber", "Ptr")
 
-
-getCurrentDesktopNum(){ 
-  RegRead, cur, HKEY_CURRENT_USER\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\SessionInfo\1\VirtualDesktops, CurrentVirtualDesktop
-  RegRead, all, HKEY_CURRENT_USER\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\VirtualDesktops, VirtualDesktopIDs
-  ix := floor(InStr(all,cur) / strlen(cur))
-  return ix
-}
+global search =
+global lastSearch =
+global allwindows := Object()
+global hiddenWindows := Object()
+global filteredWindows := Object()
+global debounced := true
+global activeWindowId =
 
 ;----------------------------------------------------------------------
 ;
 ; Alt tab to activate.
 ;
-#'::
-  search =
-  lastSearch =
-  debounced := true
-  allwindows := Object()
-  hiddenWindows := Object()
+#'::showSearchList()
+#+'::showSearchList()
+#^'::showSearchList()
 
-  GuiControl, , Edit1
-  Gui, Show, Center, Window Switcher
-  WinGet, switcher_id, ID, A
-  WinSet, AlwaysOnTop, On, ahk_id %switcher_id%
-  ControlFocus, Edit1, ahk_id %switcher_id%
+getCurrentDesktopNum(){
+  global GetCurrentDesktopNumberProc
+;  RegRead, cur, HKEY_CURRENT_USER\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\SessionInfo\1\VirtualDesktops, CurrentVirtualDesktop
+;  RegRead, all, HKEY_CURRENT_USER\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\VirtualDesktops, VirtualDesktopIDs
+;  ix := floor(InStr(all,cur) / strlen(cur))
+;  return ix
 
+ return DllCall(GetCurrentDesktopNumberProc, UInt)
+
+}
+
+;selectNextWindowFromList() {
+;  global currWinSize.GetKeyState("Ctrl","P")
+;  global cycleCurrentIdx
+;
+;  if (cycleCurrentIdx >= currWinSize) {
+;    cycleCurrentIdx := 1
+;  } else {
+;    cycleCurrentIdx := cycleCurrentIdx + 1
+;  }
+;
+;  activateWindow(cycleCurrentIdx)
+;}
+
+;selectPreviousWindowFromList() {
+;  global currWinSize
+;  global cycleCurrentIdx
+;
+;
+;  if (cycleCurrentIdx <= 1) {
+;    cycleCurrentIdx := currWinSize
+;  } else {
+;    cycleCurrentIdx := cycleCurrentIdx - 1
+;  }
+;  activateWindow(cycleCurrentIdx)
+;}
+
+drawSwitcherWindow() {
+  global search
+
+  Gui,   +LastFound +AlwaysOnTop -Caption +ToolWindow
+  Gui,   Color, black,black
+  WinSet, Transparent, 225
+  Gui,   Font, s16 cEEE8D5 bold, Consolas
+  Gui,   Margin, 4, 4
+  Gui,   Add, Text,     w100 h30 x6 y8, Search`:
+  Gui,   Add, Edit,     w500 h30 x110 y4 gSearchChange vsearch,
+  Gui,   Add, ListView, w1200 h510 x4 y40 -VScroll -HScroll -Hdr -Multi Count10 AltSubmit gListViewClick, index|listId|deskNo|title|proc
+
+  GuiControl,   , Edit1
+  Gui,   Show, Center, Window Switcher
+  WinGet, switcherId, ID, A
+  WinSet, AlwaysOnTop, On, ahk_id %switcherId%
+  ControlFocus, ahk_id %switcherId%
+  return switcherId
+}
+
+processUserInput(switcherId) {
   Loop
   {
-    Input, input, L1, {enter}{esc}{tab}{backspace}{delete}{up}{down}{left}{right}{home}{end}{F4}
+    Input, input, L1, {enter}{esc}{tab}{backspace}{delete}{up}{down}{left}{right}{home}{end}{F4}{Ctrl}
 
     if ErrorLevel = EndKey:enter
     {
-      ActivateWindow()
+      activateWindowFromGui()
       break
     }
     else if ErrorLevel = EndKey:escape
     {
-      Gui Cancel
+      Gui,   Destroy
       break
     }
     else if ErrorLevel = EndKey:tab
     {
-      ControlFocus, SysListView321, ahk_id %switcher_id%
+      ControlFocus, SysListView321, ahk_id %switcherId%
 
       ; When on last row, wrap tab next to top of list.
       if LV_GetNext(0) = LV_GetCount()
@@ -128,55 +170,55 @@ getCurrentDesktopNum(){
         LV_Modify(1, "Select")
         LV_Modify(1, "Focus")
       } else {
-        ControlSend, SysListView321, {down}, ahk_id %switcher_id%
+        ControlSend, SysListView321, {down}, ahk_id %switcherId%
       }
 
       continue
     }
     else if ErrorLevel = EndKey:backspace
     {
-      ControlFocus, Edit1, ahk_id %switcher_id%
+      ControlFocus, Edit1, ahk_id %switcherId%
 
       if GetKeyState("Ctrl","P")
         chars = {blind}^{Left}{Del} ; courtesy of VxE: http://www.autohotkey.com/board/topic/35458-backward-search-delete-a-word-to-the-left/#entry223378
       else
         chars = {backspace}
 
-      ControlSend, Edit1, %chars%, ahk_id %switcher_id%
+      ControlSend, Edit1, %chars%, ahk_id %switcherId%
 
       continue
     }
     else if ErrorLevel = EndKey:delete
     {
-      ControlFocus, Edit1, ahk_id %switcher_id%
+      ControlFocus,  Edit1, ahk_id %switcherId%
       keys := AddModifierKeys("{del}")
-      ControlSend, Edit1, %keys%, ahk_id %switcher_id%
+      ControlSend, Edit1, %keys%, ahk_id %switcherId%
       continue
     }
     else if ErrorLevel = EndKey:up
     {
-      ControlFocus, SysListView321, ahk_id %switcher_id%
-      ControlSend, SysListView321, {up}, ahk_id %switcher_id%
+      ControlFocus, SysListView321, ahk_id %switcherId%
+      ControlSend, SysListView321, {up}, ahk_id %switcherId%
       continue
     }
     else if ErrorLevel = EndKey:down
     {
-      ControlFocus, SysListView321, ahk_id %switcher_id%
-      ControlSend, SysListView321, {down}, ahk_id %switcher_id%
+      ControlFocus, SysListView321, ahk_id %switcherId%
+      ControlSend, SysListView321, {down}, ahk_id %switcherId%
       continue
     }
     else if ErrorLevel = EndKey:left
     {
-      ControlFocus, Edit1, ahk_id %switcher_id%
+      ControlFocus, Edit1, ahk_id %switcherId%
       keys := AddModifierKeys("{left}")
-      ControlSend, Edit1, %keys%, ahk_id %switcher_id%
+      ControlSend, Edit1, %keys%, ahk_id %switcherId%
       continue
     }
     else if ErrorLevel = EndKey:right
     {
-      ControlFocus, Edit1, ahk_id %switcher_id%
+      ControlFocus, Edit1, ahk_id %switcherId%
       keys := AddModifierKeys("{right}")
-      ControlSend, Edit1, %keys%, ahk_id %switcher_id%
+      ControlSend, Edit1, %keys%, ahk_id %switcherId%
       continue
     }
     else if ErrorLevel = EndKey:home
@@ -195,45 +237,123 @@ getCurrentDesktopNum(){
         ExitApp
     }
 
-    ControlFocus, Edit1, ahk_id %switcher_id%
-    Control, EditPaste, %input%, Edit1, ahk_id %switcher_id%
+    ControlFocus, Edit1, ahk_id %switcherId%
+    Control, EditPaste, %input%, Edit1, ahk_id %switcherId%
   }
-Return
+}
 
-;----------------------------------------------------------------------
-;
-; Runs whenever Edit control is updated
-SearchChange:
+
+showSearchList() {
+  global debounced, debounceDuration, activeWindowId
+  AutoTrim, off
+
+  global search =
+  global lastSearch =
+  global allwindows := Object()
+  global hiddenWindows := Object()
+  global filteredWindows := Object()
+  global debounced := true
+  global activeWindowId =
+
+  Gui, osd: Destroy ; remove any other active window
+
+  WinGet, activeWindowId, ID, A
+
+  switcherId := drawSwitcherWindow()
+  processUserInput(switcherId)
+
+  ;
+  ; Runs whenever Edit control is updated
+  SearchChange:
+    onSearchChange(switcherId)
+    return
+  ;----------------------------------------------------------------------
+  ;
+  ; Handle mouse click events on the listview
+  ;
+  ListViewClick:
+    if (A_GuiControlEvent = "Normal") {
+      SendEvent {enter}
+    }
+    return
+}
+
+isVarInitialized(var) {
+  if var =
+    return False
+  else
+    return True
+}
+
+onSearchChange(switcherId) {
   global debounced, debounceDuration
+  
+  if(!isVarInitialized(switcherId)) Return
+
   if (!debounced) {
     return
   }
   debounced := false
   SetTimer, Debounce, -%debounceDuration%
-
   Gui, Submit, NoHide
-  RefreshWindowList()
+  RefreshWindowList(switcherId)
   return
+  ;----------------------------------------------------------------------
+  ; Clear debounce check
+  Debounce:
+    debounced := true
+    Gui, Submit, NoHide
+    RefreshWindowList(switcherId)
+    return
+}
 
 ;----------------------------------------------------------------------
 ;
-; Clear debounce check
-Debounce:
-  global debounced := true
-
-  Gui, Submit, NoHide
-  RefreshWindowList()
-  return
-
-;----------------------------------------------------------------------
+; Refresh the list of windows according to the search criteria
 ;
-; Handle mouse click events on the listview
-;
-ListViewClick:
-  if (A_GuiControlEvent = "Normal") {
-    SendEvent {enter}
+refreshWindowList(switcherId)
+{
+  DetectHiddenWindows, On
+
+  if(!isVarInitialized(switcherId)) Return
+
+  global allwindows, filteredWindows
+  global search, lastSearch, refreshEveryKeystroke
+
+  uninitialized := (allwindows.MinIndex() = "")
+
+  ;MsgBox, Refresh window list - switcherId - %switcherId%
+
+  ;if (uninitialized || refreshEveryKeystroke) {
+    searchActiveWindowSiblings := False
+    if (GetKeyState("Shift", "P")) {
+      searchActiveWindowSiblings := True
+    }
+    searchBrowserTabs := False
+    if (GetKeyState("Ctrl","P")) {
+      searchBrowserTabs := True
+    }
+    allwindows := GetAllWindows(switcherId, searchActiveWindowSiblings, searchBrowserTabs)
+  ;}
+
+  currentSearch := Trim(search)
+  if ((currentSearch == lastSearch) && !uninitialized) {
+    return
   }
-  return
+
+  ; When adding to criteria (ie typing, not erasing), refilter
+  ; the existing filtered list. This should be sane since the even if we enter
+  ; a new letter at the beginning of the search term, all shown matches should
+  ; still contain the previous search term as a 'substring'.
+  useExisting := (StrLen(currentSearch) > StrLen(lastSearch))
+  lastSearch := currentSearch
+
+  filteredWindows := FilterWindowList(useExisting ? filteredWindows : allwindows, currentSearch)
+
+  DrawListView(filteredWindows)
+  DetectHiddenWindows, Off
+}
+
 
 ;----------------------------------------------------------------------
 ;
@@ -261,7 +381,8 @@ IncludedIn(haystack,needle)
   Loop % haystack.MaxIndex()
   {
     item := haystack[a_index]
-    StringTrimRight, item, item, 0
+    item := Trim(item)
+
     if item =
       continue
 
@@ -276,32 +397,50 @@ IncludedIn(haystack,needle)
 ;
 ; Fetch info on all active windows
 ;
-GetAllWindows()
-{
-  global switcher_id, filters
-  windows := Object()
+GetAllWindows(switcherId, searchActiveWindowSiblings := False, searchBrowserTabs := false) {
+  if(!isVarInitialized(switcherId)) Return
+
+  global filters
+  global currWinSize
+  global cycleCurrentIdx
+  global GetWindowDesktopNumberProc
+
+  newWindows := Object()
+
+  activeWindowProcessName =
+  
+  if searchActiveWindowSiblings {
+    activeWindowProcessName := GetProcessName(activeWindowId)
+  }
+
 
   cnt := 0
   WinGet, id, list, , , Program Manager
   Loop, %id%
   {
-    StringTrimRight, wid, id%a_index%, 0
+    wid := Trim(id%a_index%)
 
     ; don't add the switcher window
-    if switcher_id = %wid%
+    if switcherId = %wid%
       continue
 
-    if !IsWindowVisibleMemo(wid) || IsInTClass(wid)
+
+    if !IsWindowVisibleMemo(wid) || !IsValidExStyle(wid)
+      Continue
+
+    if IsInTClass(wid)
       Continue
 
     WinGetTitle, title, ahk_id %wid%
-    StringTrimRight, title, title, 0
+    title := Trim(title)
 
-    WinGet, wstyle, style, ahk_id %wid%
+    ;WinGet, wstyle, style, ahk_id %wid%
 
     ; FIXME: windows with empty titles?
-    if title =
+    if title = 
       continue    
+
+    ;MsgBox, "id": %wid% "title": %title% "procName": %procName% "listid" : %printCnt%
 
     ; don't add titles which match any of the filters
     if IncludedIn(filters, title) > -1
@@ -309,36 +448,91 @@ GetAllWindows()
 
     ; replace pipe (|) characters in the window title,
     ; because Gui Add uses it for separating listbox items
-    StringReplace, title, title, |, -, all
+    title := StrReplace(title, "|", "-", 0, -1)
+    ;OutputVarCount 0 if none
+    ;Limit it defaults to -1
 
     procName := GetProcessName(wid)
 
-    printCnt := cnt
+
+    if searchActiveWindowSiblings && activeWindowProcessName != procName {
+      Continue
+    }
+
+    windowDeskNum := DllCall(GetWindowDesktopNumberProc, UInt, wid, UInt)
+
+
+    if (procName = "chrome" && searchBrowserTabs) {
+      chromeTabNames := JEE_ChromeGetTabNames(wid, "|")
+      chromeTabArray := StrSplit(chromeTabNames, "|")
+      Loop % chromeTabArray.MaxIndex()
+      {
+        tabTitle := Trim(chromeTabArray[A_Index])
+        if tabTitle = 
+          Continue
+        cnt := cnt + 1
+        printCnt := getPrintCnt(cnt)
+
+        newWindows.Insert({ "id": wid, "title": tabTitle, "procName": procName, "listid" : printCnt, "deskNum" : windowDeskNum })
+        
+      }
+      Continue
+    }
+
+    if (searchBrowserTabs) {
+      Continue
+    }
+
+
+    cnt := cnt + 1
+    printCnt := getPrintCnt(cnt)  
+    newWindows.Insert({ "id": wid, "title": title, "procName": procName, "listid" : printCnt, "deskNum" :windowDeskNum })
+  }
+
+  currWinSize := cnt - 1
+  cycleCurrentIdx := 1
+
+  ; first window is active window, user usually wants to switch to other window
+  ; because of that, switch first and second place in the array
+
+  if(newWindows.MaxIndex() > 2) {
+    swapListElements(newWindows, newWindows.MinIndex(), newWindows.MinIndex() + 1)
+  }
+
+  return newWindows
+}
+
+swapListElements(ByRef list,t,u) {
+  tmp := list[t]
+  tmpPrintCnt := list[t].listid
+
+  list[t].listid := list[u].listid
+  list[t] := list[u]
+
+  list[u].listid := tmpPrintCnt
+  list[u] := tmp
+
+return list
+}
+
+
+getPrintCnt(cnt) {
+  printCnt := cnt
+
     if (printCnt < 10)
       printCnt := "0" + cnt
 
-    windows.Insert({ "id": wid, "title": title, "procName": procName, "listid" : printCnt })
-    cnt := cnt + 1
-  }
-
-  return windows
+  return printCnt
 }
-
-getWid(pProcName) {
-  MsgBox, %allWindows%
-  For id, data in allwindows {
-    MsgBox, id
-  } 
-}
-
 IsWindowCloaked(hwnd) {
   return DllCall("dwmapi\DwmGetWindowAttribute", "ptr", hwnd, "int", 14, "int*", cloaked, "int", 4) >= 0
       && cloaked
 }
 
 IsWindowVisibleMemo(hwnd) {
+  global hiddenWindows
   if (hiddenWindows.HasKey(hwnd)) {
-    return True
+    return False
   } else {
     isVisible := IsWindowVisible(hwnd)
     if (!isVisible) {
@@ -347,6 +541,7 @@ IsWindowVisibleMemo(hwnd) {
     Return isVisible
   }
 }
+
 IsWindowVisible(hwnd) {
     if DllCall("IsWindowVisible", UPtr,hwnd) 
       return True
@@ -363,40 +558,8 @@ IsInTClass(hwnd) {
 }
 
 IsValidExStyle(hwnd) {
-  WinGet, Ex, ExStyle, ahk_id %hwnd%
-  return Ex & (0x8 | 0x80 | 0x8000000)
-    ;if ( IsWindowCloaked(hwnd) || Ex & (0x8 | 0x80 | 0x8000000) ) ;WS_EX_TOPMOST, WS_EX_TOOLWINDOW, WS_EX_NOACTIVATE
-
-}
-
-;----------------------------------------------------------------------
-;
-; Refresh the list of windows according to the search criteria
-;
-RefreshWindowList()
-{
-  global allwindows, windows
-  global search, lastSearch, refreshEveryKeystroke
-  uninitialized := (allwindows.MinIndex() = "")
-
-  if (uninitialized || refreshEveryKeystroke)
-    allwindows := GetAllWindows()
-
-  currentSearch := Trim(search)
-  if ((currentSearch == lastSearch) && !uninitialized) {
-    return
-  }
-
-  ; When adding to criteria (ie typing, not erasing), refilter
-  ; the existing filtered list. This should be sane since the even if we enter
-  ; a new letter at the beginning of the search term, all shown matches should
-  ; still contain the previous search term as a 'substring'.
-  useExisting := (StrLen(currentSearch) > StrLen(lastSearch))
-  lastSearch := currentSearch
-
-  windows := FilterWindowList(useExisting ? windows : allwindows, currentSearch)
-
-  DrawListView(windows)
+  WinGet, vExStyle, ExStyle, ahk_id %hwnd%
+  return !((vExStyle & WS_EX_TOOLWINDOW) && !(vExStyle & WS_EX_APPWINDOW))
 }
 
 ;----------------------------------------------------------------------
@@ -520,26 +683,56 @@ SortByScore(list)
   return list
 }
 
+activateWindowFromGui() {
+  global search
+  Gui, Submit
+  rowNum := LV_GetNext(0)
+  if (rowNum > 0) {
+    activateWindow(rowNum)
+  } else {
+    activateWindowsSearch(search)
+  }
+  LV_Delete()
+  Gui, Destroy
+}
+
+activateWindowsSearch(searchText) {
+    Send {LWin}
+    Sleep, 100
+    Clipboard := searchText
+    Send, ^{v}
+
+}
+
 ;----------------------------------------------------------------------
 ;
 ; Activate selected window
 ;
-ActivateWindow()
+activateWindow(rowNum)
 {
-  global windows, ViewSwitchTo
+  global filteredWindows, ViewSwitchTo, GetWindowDesktopNumberProc, GoToDesktopNumberProc
 
-  Gui Submit
-  rowNum:= LV_GetNext(0)
-  wid := windows[rowNum].id
+  wid := filteredWindows[rowNum].id
+  title := filteredWindows[rowNum].title
+  procName := filteredWindows[rowNum].procName
+
+  windowDeskNum := DllCall(GetWindowDesktopNumberProc, UInt, wid, UInt)
+  currentDeskNum := getCurrentDesktopNum()
+
+  if (windowDeskNum  < 1000 and windowDeskNum != currentDeskNum) {
+    ChangeDesktop(windowDeskNum)
+  }
   
-  DllCall(ViewSwitchTo, UInt, wid)
+  WinShow, ahk_id %wid%
+  WinActivate, ahk_id %wid%
 
-  LV_Delete()
+  if (procName = "chrome") {
+    Sleep, 100 ; just in case
+    JEE_ChromeFocusTabByName(wid, title)
+  }
 
 	SetTimer, osdCurrentDesktop, 200
-
 	Return
-
 
 osdCurrentDesktop:
 	SetTimer, osdCurrentDesktop, Off
@@ -552,9 +745,9 @@ osdCurrentDesktop:
 ;
 ; Add window list to listview
 ;
-DrawListView(windows)
+DrawListView(windowList)
 {
-  windowCount := windows.MaxIndex()
+  windowCount := windowList.MaxIndex()
   imageListID := IL_Create(windowCount, 1, 1)
 
   ; Attach the ImageLists to the ListView so that it can later display the icons:
@@ -564,20 +757,49 @@ DrawListView(windows)
   iconCount = 0
   removedRows := Array()
 
-  For idx, window in windows
+  For idx, window in windowList
   {
     wid := window.id
     title := window.title
     listid := window.listid
+    deskNum := window.deskNum
 
-    ; Retrieves an 8-digit hexadecimal number representing extended style of a window.
-    WinGet, style, ExStyle, ahk_id %wid%
+    iconNumber := getIconNumber(imageListID, wid)
 
+    if iconNumber > 0
+    {
+      iconCount+=1
+      LV_Add("Icon" . iconNumber, listid, deskNum + 1, window.procName, title)
+    } else {
+      removedRows.Insert(idx)
+    }
+  }
+
+  ; Don't draw rows without icons.
+  windowCount-=removedRows.MaxIndex()
+  For key,rowNum in removedRows
+  {
+    windowList.Remove(rowNum)
+  }
+
+  LV_Modify(1, "Select")
+  LV_Modify(1, "Focus")
+;  LV_ModifyCol(2, "Integer")  ; For sorting purposes, indicate that column 2 is an integer.
+  LV_ModifyCol(1,70)
+  LV_ModifyCol(2, 50)
+  LV_ModifyCol(3, 200)
+  LV_ModifyCol(4)
+}
+
+getIconNumber(imageListID, wid) {
     ; http://msdn.microsoft.com/en-us/library/windows/desktop/ff700543(v=vs.85).aspx
     ; Forces a top-level window onto the taskbar when the window is visible.
     WS_EX_APPWINDOW = 0x40000
     ; A tool window does not appear in the taskbar or in the dialog that appears when the user presses ALT+TAB.
     WS_EX_TOOLWINDOW = 0x80
+
+    ; Retrieves an 8-digit hexadecimal number representing extended style of a window.
+    WinGet, style, ExStyle, ahk_id %wid%
 
     isAppWindow := (style & WS_EX_APPWINDOW)
     isToolWindow := (style & WS_EX_TOOLWINDOW)
@@ -587,9 +809,7 @@ DrawListView(windows)
     GW_OWNER = 4
     ownerHwnd := DllCall("GetWindow", "uint", wid, "uint", GW_OWNER)
 
-    iconNumber =
-
-    if (isAppWindow or ( !ownerHwnd and !isToolWindow ))
+  if (isAppWindow or ( !ownerHwnd and !isToolWindow ))
     {
       ; http://www.autohotkey.com/docs/misc/SendMessageList.htm
       WM_GETICON := 0x7F
@@ -641,29 +861,7 @@ DrawListView(windows)
       if Win_Class = #32770 ; fix for displaying control panel related windows (dialog class) that aren't on taskbar
         iconNumber := IL_Add(imageListID, "C:\WINDOWS\system32\shell32.dll", 217) ; generic control panel icon
     }
-
-    if iconNumber > 0
-    {
-      iconCount+=1
-      LV_Add("Icon" . iconNumber, listid, window.procName, title)
-    } else {
-      removedRows.Insert(idx)
-    }
-  }
-
-  ; Don't draw rows without icons.
-  windowCount-=removedRows.MaxIndex()
-  For key,rowNum in removedRows
-  {
-    windows.Remove(rowNum)
-  }
-
-  LV_Modify(1, "Select")
-  LV_Modify(1, "Focus")
-
-  LV_ModifyCol(1,70)
-  LV_ModifyCol(2,200)
-  LV_ModifyCol(3,1000)
+    return iconNumber
 }
 
 ;----------------------------------------------------------------------
@@ -673,10 +871,10 @@ DrawListView(windows)
 GetProcessName(wid)
 {
   WinGet, name, ProcessName, ahk_id %wid%
-  StringGetPos, pos, name, .
+  pos := InStr(name, ".") -1
   if ErrorLevel <> 1
   {
-    StringLeft, name, name, %pos%
+    name := SubStr(name, 1, pos)
   }
 
   return name
@@ -740,28 +938,28 @@ StrDiff(str1, str2, maxOffset:=5) {
   return ((n0 + m0)/2 - lcs) / (n0 > m0 ? n0 : m0)
 }
 
-showOsd(textToShow) {
-	Gui, Osd: Destroy
-  CustomColor := 000000  ; Can be any RGB color (it will be made transparent below). 
-	Gui, Osd: +AlwaysOnTop +LastFound +Owner -Caption
-	Gui, Osd: Color, %CustomColor% 
-	Gui, Osd: Font, cFFFFFF S48, Verdana
+showOsd1(textToShow) {
+	Gui, osd: Destroy
+  CustomColor = 000000  ; Can be any RGB color (it will be made transparent below). 
+	Gui, osd: +AlwaysOnTop +LastFound +Owner -Caption
+	Gui, osd: Color, %CustomColor% 
+	Gui, osd: Font, cFFFFFF S48, Verdana
 
-  Gui, Osd: add, Text, center center x2 y2 c000000 BackgroundTrans, %textToShow%
-  Gui, Osd: add, Text, center center x0 y0 cLime BackgroundTrans, %textToShow%
+  Gui, osd: add, Text, center center x2 y2 c000000 BackgroundTrans, %textToShow%
+  Gui, osd: add, Text, center center x0 y0 cLime BackgroundTrans, %textToShow%
 
 	WinSet, TransColor, %CustomColor%  250
 	WinSet, ExStyle, +0x20, Output
-	Gui, Osd: Show, center center NoActivate , Output
+	Gui, osd: Show, center center NoActivate, Output
  
-	SetTimer, RemoveToolTip, 800
+	SetTimer, RemoveToolTip1, 3000
 
 	Return
 
 
-RemoveToolTip:
-	SetTimer, RemoveToolTip, Off
-	Gui, Osd: Destroy
+RemoveToolTip1:
+	SetTimer, RemoveToolTip1, Off
+	Gui, osd: Destroy
 	return
 	
 }

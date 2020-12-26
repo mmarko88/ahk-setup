@@ -10,8 +10,10 @@ MoveWindowToDesktopNumberProc := DllCall("GetProcAddress", Ptr, hVirtualDesktopA
 RegisterPostMessageHookProc := DllCall("GetProcAddress", Ptr, hVirtualDesktopAccessor, AStr, "RegisterPostMessageHook", "Ptr")
 UnregisterPostMessageHookProc := DllCall("GetProcAddress", Ptr, hVirtualDesktopAccessor, AStr, "UnregisterPostMessageHook", "Ptr")
 IsPinnedWindowProc := DllCall("GetProcAddress", Ptr, hVirtualDesktopAccessor, AStr, "IsPinnedWindow", "Ptr")
+PinWindowProc := DllCall("GetProcAddress", Ptr, hVirtualDesktopAccessor, AStr, "PinWindow", "Ptr")
+UnPinWindowProc := DllCall("GetProcAddress", Ptr, hVirtualDesktopAccessor, AStr, "UnPinWindow", "Ptr")
 RestartVirtualDesktopAccessorProc := DllCall("GetProcAddress", Ptr, hVirtualDesktopAccessor, AStr, "RestartVirtualDesktopAccessor", "Ptr")
-; GetWindowDesktopNumberProc := DllCall("GetProcAddress", Ptr, hVirtualDesktopAccessor, AStr, "GetWindowDesktopNumber", "Ptr")
+GetWindowDesktopNumberProc := DllCall("GetProcAddress", Ptr, hVirtualDesktopAccessor, AStr, "GetWindowDesktopNumber", "Ptr")
 activeWindowByDesktop := {}
 
 currentDesktop := DllCall(GetCurrentDesktopNumberProc, UInt)
@@ -29,6 +31,34 @@ MoveCurrentWindowToDesktop(number) {
 	WinGet, activeHwnd, ID, A
 	activeWindowByDesktop[number] := 0 ; Do not activate
 	DllCall(MoveWindowToDesktopNumberProc, UInt, activeHwnd, UInt, number)
+}
+
+isWindowPinned(windowId) {
+	global IsPinnedWindowProc
+	return DllCall(IsPinnedWindowProc, UInt, windowId, Int)
+}
+
+pinWindow(windowId) {
+	global PinWindowProc
+	DllCall(PinWindowProc, UInt, windowId)
+}
+
+unPinWindow(windowId) {
+	global UnPinWindowProc
+	DllCall(UnPinWindowProc, UInt, windowId)
+}
+
+togglePinActiveWindow() {
+	global PinWindowProc, UnPinWindowProc
+	WinGet, activeHwnd, ID, A
+	isPinned := isWindowPinned(activeHwnd)
+	if (isPinned) {
+		unPinWindow(activeHwnd)
+		showOsd("Window un-pinned")
+	} else {
+		pinWindow(activeHwnd)
+		showOsd("Window pinned")
+	}
 }
 
 GoToPrevDesktop() {
@@ -124,38 +154,41 @@ ChangeDesktop(num) {
 
 ToolTipText(num)
 {
-	;Progress, b R1-10 w300 fs32, , Desktop: %num%,, Courier New
-	;Progress, %num% ; Set the position of the bar to 50%.
-    ;SetTimer, HideTrayTip, -450
 	showOsd("Desktop: " . num)
 }
 
-; Copy this function into your script to use it.
-HideTrayTip() {
-Progress Off
+getCurrDesktopNum(){
+  global GetCurrentDesktopNumberProc
+; RegRead, cur, HKEY_CURRENT_USER\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\SessionInfo\1\VirtualDesktops, CurrentVirtualDesktop
+; RegRead, all, HKEY_CURRENT_USER\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\VirtualDesktops, VirtualDesktopIDs
+; ix := floor(InStr(all,cur) / strlen(cur))
+; return ix
+
+ return DllCall(GetCurrentDesktopNumberProc, UInt)
 }
 
+
 showInfo() {
-	global currentDesktop
+	currDeskNum := getCurrDesktopNum()
 	FormatTime, currDateTimeStr,, hh:mm:ss' `n 'dd MMM yyyy
-	text := "Desktop:" . (currentDesktop + 1) . "`n" .  currDateTimeStr
+	text := "Desktop:" . (currDeskNum + 1) . "`n" .  currDateTimeStr
 	showOsd(text)
 }
 
 
 showOsd(textToShow) {
-	Gui, Destroy
+	Gui, osdvd: Destroy
     CustomColor = 000000  ; Can be any RGB color (it will be made transparent below). 
-	Gui, +AlwaysOnTop +LastFound +Owner -Caption
-	Gui, Color, %CustomColor% 
-	Gui, Font, cFFFFFF S48, Verdana
+	Gui, osdvd: +AlwaysOnTop +LastFound +Owner -Caption
+	Gui, osdvd: Color, %CustomColor% 
+	Gui, osdvd: Font, cFFFFFF S48, Verdana
 
-    Gui, add, Text, center center x2 y2 c000000 BackgroundTrans, %textToShow%
-    Gui, add, Text, center center x0 y0 cLime BackgroundTrans, %textToShow%
+    Gui, osdvd: add, Text, center center x2 y2 c000000 BackgroundTrans, %textToShow%
+    Gui, osdvd: add, Text, center center x0 y0 cLime BackgroundTrans, %textToShow%
 
 	WinSet, TransColor, %CustomColor%  250
 	WinSet, ExStyle, +0x20, Output
-	Gui, Show, center center NoActivate , Output
+	Gui, osdvd: Show, center center NoActivate , Output
  
 	SetTimer, RemoveToolTip, 3000
 
@@ -164,7 +197,7 @@ showOsd(textToShow) {
 
 RemoveToolTip:
 	SetTimer, RemoveToolTip, Off
-	Gui, Destroy
+	Gui, osdvd: Destroy
 	return
 	
 }
