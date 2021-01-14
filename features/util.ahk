@@ -132,12 +132,8 @@ toggleTaskManager() {
 	;	
 }
 
-startProgram(title, location) {
-	;if title != '' and WinExist(title)
-	;	WinActivate,
-	;else {
-		Run, %location%
-	;}
+startProgram(location) {
+	Run, %location%
 }
 
 changeOpasity(value) {
@@ -185,7 +181,6 @@ ToggleTaskBarAndStart()
 
 
 lockWorkStationAndTurnOffScreen() {
- Sleep, 200
  DllCall("LockWorkStation")
  Sleep, 200
  SendMessage,0x112,0xF170,2,,Program Manager

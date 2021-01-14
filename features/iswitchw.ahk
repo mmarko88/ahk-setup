@@ -12,7 +12,7 @@ SetWorkingDir %A_ScriptDir%  ; Ensures a consistent starting directory.
 ; the initial list of windows presented when iswitchw is activated. Can be
 ; useful for things like  hiding improperly configured tool windows or screen
 ; capture software during demos.
-filters := ["Window Switcher"]
+filters := ["Window Switcher", "AutoHotkey"]
 
 ; Set this to true to update the list of windows every time the search is
 ; updated. This is usually not necessary and creates additional overhead, so
@@ -64,7 +64,6 @@ useMultipleTerms := true
 SendMode Input  ; Recommended for new scripts due to its superior speed and reliability.
 SetWorkingDir %A_ScriptDir%  ; Ensures a consistent starting directory.
 Global tClass:="SysShadow,Alternate Owner,tooltips_class32,DummyDWMListenerWindow,EdgeUiInputTopWndClass,ApplicationFrameWindow,TaskManagerWindow,Qt5QWindowIcon,Windows.UI.Core.CoreWindow,WorkerW,Progman,Internet Explorer_Hidden,Shell_TrayWnd" ; HH Parent
-;global cycleCurrentIdx := 1
 
 hVirtualDesktopAccessor := DllCall("LoadLibrary", Str, "VirtualDesktopAccessor.dll", "Ptr") 
 ViewSwitchTo := DllCall("GetProcAddress", Ptr, hVirtualDesktopAccessor, AStr, "ViewSwitchTo", "Ptr")
@@ -80,13 +79,70 @@ global filteredWindows := Object()
 global debounced := true
 global activeWindowId =
 
+
+global windowsOnDesktop := Object()
+global selectedWindowIndex := 1
+
+#j::changeActiveWindow(1)
+#k::changeActiveWindow(-1)
+
+changeActiveWindow(offset) {
+  syncWindowList()
+;  wid := windowsOnDesktop[selectedWindowIndex].id
+;  title := windowsOnDesktop[selectedWindowIndex].title
+;  MsgBox, selectedWindowIndex %selectedWindowIndex% wid %wid% title %title%
+  selectedWindowIndex := incDecByOffset(selectedWindowIndex, windowsOnDesktop.MaxIndex(), offset)
+
+  wid := windowsOnDesktop[selectedWindowIndex].id
+  ;  title := windowsOnDesktop[selectedWindowIndex].title
+  ;  MsgBox, selectedWindowIndex %selectedWindowIndex% wid %wid% title %title%
+  activateWindow(wid)
+}
+
+incDecByOffset(currVal, maxVal, offset) {
+  returnVal := currVal + offset
+  if (returnVal <= 0) {
+    returnVal := maxVal
+  }
+  if (returnVal > maxVal) {
+    returnVal := 1
+  }
+  return returnVal
+}
+
+syncWindowList() {
+  global windowsOnDesktop
+  static checkForWindowChanges := True
+  if (!checkForWindowChanges) {
+    Return
+  }
+  DetectHiddenWindows, Off
+  currDesktopNum := getCurrDesktopNum() ; filter only those on the same desktop
+  currentWindowList := GetAllWindows(-1, false, false, false, currDesktopNum)
+
+  if (windowsOnDesktop.MinIndex() == "" || windowsOnDesktop.MaxIndex() != currentWindowList.MaxIndex()) {
+    windowsOnDesktop := currentWindowList
+    selectedWindowIndex := 1
+  }
+  checkForWindowChanges := False
+
+  refreshTime := 2000
+  SetTimer, turnOnCheckForWindowChanges, -%refreshTime%
+  return
+
+  turnOnCheckForWindowChanges:
+    checkForWindowChanges := true
+    return
+}
+
+
 ;----------------------------------------------------------------------
 ;
 ; Alt tab to activate.
 ;
-#'::showSearchList()
-#+'::showSearchList()
-#^'::showSearchList()
+#'::showSearchList(false, false)
+#+'::showSearchList(false, true)
+#^'::showSearchList(true, false)
 
 getCurrentDesktopNum(){
   global GetCurrentDesktopNumberProc
@@ -98,32 +154,6 @@ getCurrentDesktopNum(){
  return DllCall(GetCurrentDesktopNumberProc, UInt)
 
 }
-
-;selectNextWindowFromList() {
-;  global currWinSize.GetKeyState("Ctrl","P")
-;  global cycleCurrentIdx
-;
-;  if (cycleCurrentIdx >= currWinSize) {
-;    cycleCurrentIdx := 1
-;  } else {
-;    cycleCurrentIdx := cycleCurrentIdx + 1
-;  }
-;
-;  activateWindow(cycleCurrentIdx)
-;}
-
-;selectPreviousWindowFromList() {
-;  global currWinSize
-;  global cycleCurrentIdx
-;
-;
-;  if (cycleCurrentIdx <= 1) {
-;    cycleCurrentIdx := currWinSize
-;  } else {
-;    cycleCurrentIdx := cycleCurrentIdx - 1
-;  }
-;  activateWindow(cycleCurrentIdx)
-;}
 
 drawSwitcherWindow() {
   global search
@@ -243,7 +273,7 @@ processUserInput(switcherId) {
 }
 
 
-showSearchList() {
+showSearchList(searchChromeTabs := false, searchActiveWindowSiblings := false) {
   global debounced, debounceDuration, activeWindowId
   AutoTrim, off
 
@@ -262,10 +292,11 @@ showSearchList() {
   switcherId := drawSwitcherWindow()
   processUserInput(switcherId)
 
+  return
   ;
   ; Runs whenever Edit control is updated
   SearchChange:
-    onSearchChange(switcherId)
+    onSearchChange(switcherId, searchChromeTabs, searchActiveWindowSiblings)
     return
   ;----------------------------------------------------------------------
   ;
@@ -285,7 +316,7 @@ isVarInitialized(var) {
     return True
 }
 
-onSearchChange(switcherId) {
+onSearchChange(switcherId, searchChromeTabs := false, searchActiveWindowSiblings := false) {
   global debounced, debounceDuration
   
   if(!isVarInitialized(switcherId)) Return
@@ -296,14 +327,14 @@ onSearchChange(switcherId) {
   debounced := false
   SetTimer, Debounce, -%debounceDuration%
   Gui, Submit, NoHide
-  RefreshWindowList(switcherId)
+  refreshWindowList(switcherId, searchChromeTabs, searchActiveWindowSiblings)
   return
   ;----------------------------------------------------------------------
   ; Clear debounce check
   Debounce:
     debounced := true
     Gui, Submit, NoHide
-    RefreshWindowList(switcherId)
+    refreshWindowList(switcherId, searchChromeTabs, searchActiveWindowSiblings)
     return
 }
 
@@ -311,30 +342,16 @@ onSearchChange(switcherId) {
 ;
 ; Refresh the list of windows according to the search criteria
 ;
-refreshWindowList(switcherId)
+refreshWindowList(switcherId, searchChromeTabs := false, searchActiveWindowSiblings := false)
 {
   DetectHiddenWindows, On
-
-  if(!isVarInitialized(switcherId)) Return
 
   global allwindows, filteredWindows
   global search, lastSearch, refreshEveryKeystroke
 
   uninitialized := (allwindows.MinIndex() = "")
 
-  ;MsgBox, Refresh window list - switcherId - %switcherId%
-
-  ;if (uninitialized || refreshEveryKeystroke) {
-    searchActiveWindowSiblings := False
-    if (GetKeyState("Shift", "P")) {
-      searchActiveWindowSiblings := True
-    }
-    searchBrowserTabs := False
-    if (GetKeyState("Ctrl","P")) {
-      searchBrowserTabs := True
-    }
-    allwindows := GetAllWindows(switcherId, searchActiveWindowSiblings, searchBrowserTabs)
-  ;}
+  allwindows := GetAllWindows(switcherId, searchActiveWindowSiblings, searchChromeTabs)
 
   currentSearch := Trim(search)
   if ((currentSearch == lastSearch) && !uninitialized) {
@@ -397,9 +414,7 @@ IncludedIn(haystack,needle)
 ;
 ; Fetch info on all active windows
 ;
-GetAllWindows(switcherId, searchActiveWindowSiblings := False, searchBrowserTabs := false) {
-  if(!isVarInitialized(switcherId)) Return
-
+GetAllWindows(switcherId, searchActiveWindowSiblings := False, searchBrowserTabs := false, switchFirstAndSecond := true, deskNum := -1) {
   global filters
   global currWinSize
   global cycleCurrentIdx
@@ -434,13 +449,8 @@ GetAllWindows(switcherId, searchActiveWindowSiblings := False, searchBrowserTabs
     WinGetTitle, title, ahk_id %wid%
     title := Trim(title)
 
-    ;WinGet, wstyle, style, ahk_id %wid%
-
-    ; FIXME: windows with empty titles?
     if title = 
       continue    
-
-    ;MsgBox, "id": %wid% "title": %title% "procName": %procName% "listid" : %printCnt%
 
     ; don't add titles which match any of the filters
     if IncludedIn(filters, title) > -1
@@ -454,6 +464,9 @@ GetAllWindows(switcherId, searchActiveWindowSiblings := False, searchBrowserTabs
 
     procName := GetProcessName(wid)
 
+    if procName = AutoHotkey
+      Continue
+
 
     if searchActiveWindowSiblings && activeWindowProcessName != procName {
       Continue
@@ -461,6 +474,9 @@ GetAllWindows(switcherId, searchActiveWindowSiblings := False, searchBrowserTabs
 
     windowDeskNum := DllCall(GetWindowDesktopNumberProc, UInt, wid, UInt)
 
+    if (deskNum >= 0 && windowDeskNum != deskNum) {
+      Continue
+    }
 
     if (procName = "chrome" && searchBrowserTabs) {
       chromeTabNames := JEE_ChromeGetTabNames(wid, "|")
@@ -495,7 +511,7 @@ GetAllWindows(switcherId, searchActiveWindowSiblings := False, searchBrowserTabs
   ; first window is active window, user usually wants to switch to other window
   ; because of that, switch first and second place in the array
 
-  if(newWindows.MaxIndex() > 2) {
+  if (switchFirstAndSecond && newWindows.MaxIndex() > 2) {
     swapListElements(newWindows, newWindows.MinIndex(), newWindows.MinIndex() + 1)
   }
 
@@ -688,43 +704,34 @@ activateWindowFromGui() {
   Gui, Submit
   rowNum := LV_GetNext(0)
   if (rowNum > 0) {
-    activateWindow(rowNum)
+    activateWindowFromList(rowNum)
   } else {
-    activateWindowsSearch(search)
+    windowsSearchProgram(search)
   }
   LV_Delete()
   Gui, Destroy
 }
 
-activateWindowsSearch(searchText) {
+windowsSearchProgram(searchText) {
     Send {LWin}
     Sleep, 100
     Clipboard := searchText
     Send, ^{v}
-
 }
 
 ;----------------------------------------------------------------------
 ;
 ; Activate selected window
 ;
-activateWindow(rowNum)
+activateWindowFromList(rowNum)
 {
-  global filteredWindows, ViewSwitchTo, GetWindowDesktopNumberProc, GoToDesktopNumberProc
+  global filteredWindows
 
   wid := filteredWindows[rowNum].id
   title := filteredWindows[rowNum].title
   procName := filteredWindows[rowNum].procName
 
-  windowDeskNum := DllCall(GetWindowDesktopNumberProc, UInt, wid, UInt)
-  currentDeskNum := getCurrentDesktopNum()
-
-  if (windowDeskNum  < 1000 and windowDeskNum != currentDeskNum) {
-    ChangeDesktop(windowDeskNum)
-  }
-  
-  WinShow, ahk_id %wid%
-  WinActivate, ahk_id %wid%
+  activateWindow(wid)
 
   if (procName = "chrome") {
     Sleep, 100 ; just in case
@@ -739,6 +746,19 @@ osdCurrentDesktop:
   currDesk := getCurrentDesktopNum() + 1
   showOsd("Desktop: " . currDesk)
 	return
+}
+
+activateWindow(wid) {
+  global GetWindowDesktopNumberProc
+  windowDeskNum := DllCall(GetWindowDesktopNumberProc, UInt, wid, UInt)
+  currentDeskNum := getCurrentDesktopNum()
+
+  if (windowDeskNum  < 1000 and windowDeskNum != currentDeskNum) {
+    ChangeDesktop(windowDeskNum)
+  }
+  
+  WinShow, ahk_id %wid%
+  WinActivate, ahk_id %wid%
 }
 
 ;----------------------------------------------------------------------

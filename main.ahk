@@ -7,9 +7,6 @@ SetWorkingDir %A_ScriptDir%  ; Ensures a consistent starting directory.
 #Include features/virtualDesktop.ahk
 #Include features/favorites.ahk
 #Include features/util.ahk
-#Include features/stayAwake.ahk
-#Include features/quicksearch.ahk
-;#Include features/iswitchw.ahk
 #Include features/winExplorer.ahk
 
 #1::ChangeDesktop(0)
@@ -40,75 +37,104 @@ SetWorkingDir %A_ScriptDir%  ; Ensures a consistent starting directory.
 
 #+Q::CloseActiveWindow()
 #i::showInfo()
-#s::quickGoogleSearch()
-CapsLock & s::quickGoogleSearch()
-
-; enter as a hotkey
+; enter as a hotkey Enter::Send {Enter} !Enter::Send !{Enter}
 Enter::Send {Enter}
-!Enter::Send !{Enter}
 +Enter::Send +{Enter}
 ^Enter::Send ^{Enter}
 ^!Enter::Send ^!{Enter}
-Enter & Esc::toggleTaskManager()
 Enter & w::stayAwake()
-Enter & t::TransparentWindow()
 
 ;LWin & o::ToggleWinMinimize()
-#t::TransparentWindow()
 #w::stayAwake()
 #<:: moveWindowToPreviousMonitor()
 #>:: moveWindowToNextMonitor()
-#h:: selectPreviousWindow()
-#l:: selectNextWindow()
-#+Esc::lockWorkStationAndTurnOffScreen()  ;; Turn off monitor after locking system
-#Space::ToggleTaskBarAndStart()
+#[:: moveWindowToPreviousMonitor()
+#]:: moveWindowToNextMonitor()
+#+Esc::lockPC()  ;; Turn off monitor after locking system
+^+#Space::ToggleTaskBarAndStart()
 #WheelUp:: changeOpasity(10)
 #WheelDown:: changeOpasity(-10)
+#{:: changeOpasity(10)
+#}:: changeOpasity(-10)
 #Esc::toggleTaskManager()
 #m::restoreWindow()
 #p::togglePinActiveWindow()
-#Enter::startProgram("", "cmd.exe c:\")
-CapsLock & Enter::startProgram("", "explorer.exe C:\")
-#F1::startProgram("", "C:\Program Files\Google Chrome (Local)\chrome.exe --ssl-version-min=tls1 --ssl-version-fallback-min=tls1 --no-default-browser-check")
-#F2::startProgram("Microsoft Teams", "C:\Program Files (x86)\Microsoft\Teams\current\Teams.exe")
-PgDn::doNothing()
-PgUp::doNothing()
+#a::AlwaysOnTop()
+#c::copyActiveWindowPathToClipboard()
+#Enter::startProgram("cmd.exe c:\")
+#+Enter::startProgram("explorer.exe C:\")
+#+c::startProgram("C:\Program Files\Google Chrome (Local)\chrome.exe --ssl-version-min=tls1 --ssl-version-fallback-min=tls1 --no-default-browser-check")
+PgDn::Send {Down}
+PgUp::Send {Up}
+
+CapsLock & m::Send {End}
+CapsLock & y::Send {PrintScreen}
+CapsLock & u::Send {ScrollLock}
+CapsLock & i::Send {Pause}
+CapsLock & n::Send {Del}
+CapsLock & ,::Send {PgDn}
+CapsLock & Backspace::Send {Del}
+
+CapsLock & F12::Suspend ; Suspend AutoHotKey
+Enter & Esc::Send {~}
+
+CapsLock & g::Send {Home}
+
+CapsLock & h::Send #{Left}
+CapsLock & j::Send #{Down}
+CapsLock & k::Send #{Up}
+CapsLock & l::Send #{Right}
+
+CapsLock & 1::Send {F1}
+CapsLock & 2::Send {F2}
+CapsLock & 3::Send {F3}
+CapsLock & 4::Send {F4}
+CapsLock & 5::Send {F5}
+CapsLock & 6::Send {F6}
+CapsLock & 7::Send {F7}
+CapsLock & 8::Send {F8}
+CapsLock & 9::Send {F9}
+CapsLock & 0::Send {F10}
+CapsLock & -::Send {F11}
+CapsLock & =::Send {F12}
+
+; Media keys
+CapsLock & [::Send {Volume_Down}
+CapsLock & ]::Send {Volume_Up}
+
+lockPC() {
+    Run, regedit.exe /s "enableWinLock.reg"
+
+    lockWorkStationAndTurnOffScreen()
+
+    SetTimer, enableWindowsLock, -1000
+    Return
+    
+    enableWindowsLock:
+        Run, regedit.exe /s "disableWinLock.reg"
+        Return
+}
+
+copyActiveWindowPathToClipboard() {
+	WinGet, activePath, ProcessPath, % "ahk_id" winActive("A")	; activePath is the output variable and can be named anything you like, ProcessPath is a fixed parameter, specifying the action of the winget command.
+	Clipboard := activePath 
+}
 
 restoreWindow() {
     WinGet, vMinMax, MinMax, A
 
     if (vMinMax == 1) { ; window is maximized -> action restore window
-        Send, #{Down}
+        WinRestore, A
     } else if(vMinMax == -1) { ; window is minimized -> action maximize window
-        Send, #{Up}
+        WinRestore, A
     } else { ; neider maximized nor minimized -> action maximize window
-        Send, #{Up}
+        WinMaximize, A
     }
 }
 
 doNothing() {
     
 }
-
-
-selectPreviousWindow() {
-    Send !+{Tab}
-}
-selectNextWindow() {
-    Send !{Tab}
-}
-
-
-;#;::showISwitchW() reserved in iswitchw.ahk
-
-;CapsLock & t::TransparentWindow()
-CapsLock & a::AlwaysOnTop()
-;CapsLock & i::showInfo()
-
-; TODO: window visible on all desktops
-
-CapsLock & Esc::Suspend ; Suspend AutoHotKey
-
 
 
 moveWindowToPreviousMonitor() {
@@ -120,3 +146,32 @@ moveWindowToNextMonitor() {
 }
 
 
+stayAwake() {
+    static stayAwakeFlag := False
+    CoordMode, Mouse, Screen
+    
+    stayAwakeFlag := !stayAwakeFlag
+
+    if (stayAwakeFlag) {
+        showOsd("Stay awake ON")
+    } else {
+        showOsd("Stay awake OFF")
+    }
+    Goto, moveMouse
+    Return
+
+    moveMouse:
+        MouseGetPos, CurrentX, CurrentY
+        MouseGetPos, CurrentX, CurrentY
+        If (CurrentX = LastX and CurrentY = LastY) {
+            MouseMove, 1, 1, , R
+            Sleep, 100
+            MouseMove, -1, -1, , R
+        }
+        LastX := CurrentX
+        LastY := CurrentY
+        if (stayAwakeFlag) {
+            SetTimer, moveMouse, -60000
+        }
+        Return
+}
