@@ -167,11 +167,21 @@ getCurrDesktopNum(){
  return DllCall(GetCurrentDesktopNumberProc, UInt)
 }
 
-
+; dateString should be in format dd/mm/yyyy
+getDayOfWeek(dateString) {
+;datestring = 1/1/2010 
+SetFormat, float, 02.0
+StringSplit, d, datestring, / 
+FormatTime, day_of_Week, % d3 . d1+0. . d2+0., dddd 
+return day_of_Week	
+}
 showInfo() {
 	currDeskNum := getCurrDesktopNum()
-	FormatTime, currDateTimeStr,, hh:mm:ss' `n 'dd MMM yyyy
-	text := "Desktop:" . (currDeskNum + 1) . "`n" .  currDateTimeStr
+	FormatTime, dateString, , 'dd/MMM/yyyy
+	dayOfWeek := getDayOfWeek(dateString)
+	FormatTime, currDateTimeStr,, hh:mm:ss' `n %dayOfWeek%, 'dd MMM yyyy
+	text := "Desktop:" . (currDeskNum + 1) . "`n" . currDateTimeStr
+	text := text . "`n" . ResourceMonitor_getText()
 	showOsd(text)
 }
 

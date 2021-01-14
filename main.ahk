@@ -8,6 +8,8 @@ SetWorkingDir %A_ScriptDir%  ; Ensures a consistent starting directory.
 #Include features/favorites.ahk
 #Include features/util.ahk
 #Include features/winExplorer.ahk
+#Include features/ResourceMonitor.ahk
+
 
 #1::ChangeDesktop(0)
 #2::ChangeDesktop(1)
