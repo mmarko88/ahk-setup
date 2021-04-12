@@ -5,6 +5,7 @@ SetWorkingDir %A_ScriptDir%  ; Ensures a consistent starting directory.
 #SingleInstance force
 
 #Include chromeFunctions.ahk
+#Include ResourceMonitor.ahk
 #Include virtualDesktop.ahk
 
 
@@ -81,6 +82,7 @@ global activeWindowId =
 
 
 global windowsOnDesktop := Object()
+global currentDesktopNum := -1
 global selectedWindowIndex := 1
 
 #j::changeActiveWindow(1)
@@ -88,14 +90,9 @@ global selectedWindowIndex := 1
 
 changeActiveWindow(offset) {
   syncWindowList()
-;  wid := windowsOnDesktop[selectedWindowIndex].id
-;  title := windowsOnDesktop[selectedWindowIndex].title
-;  MsgBox, selectedWindowIndex %selectedWindowIndex% wid %wid% title %title%
   selectedWindowIndex := incDecByOffset(selectedWindowIndex, windowsOnDesktop.MaxIndex(), offset)
 
   wid := windowsOnDesktop[selectedWindowIndex].id
-  ;  title := windowsOnDesktop[selectedWindowIndex].title
-  ;  MsgBox, selectedWindowIndex %selectedWindowIndex% wid %wid% title %title%
   activateWindow(wid)
 }
 
@@ -111,13 +108,14 @@ incDecByOffset(currVal, maxVal, offset) {
 }
 
 syncWindowList() {
-  global windowsOnDesktop
+  global windowsOnDesktop, currentDesktopNum
   static checkForWindowChanges := True
-  if (!checkForWindowChanges) {
+  currDesktopNum := getCurrDesktopNum() ; filter only those on the same desktop
+  if (!checkForWindowChanges && currDesktopNum = currentDesktopNum) {
     Return
   }
   DetectHiddenWindows, Off
-  currDesktopNum := getCurrDesktopNum() ; filter only those on the same desktop
+  currentDesktopNum := currDesktopNum
   currentWindowList := GetAllWindows(-1, false, false, false, currDesktopNum)
 
   if (windowsOnDesktop.MinIndex() == "" || windowsOnDesktop.MaxIndex() != currentWindowList.MaxIndex()) {
@@ -178,7 +176,7 @@ drawSwitcherWindow() {
 processUserInput(switcherId) {
   Loop
   {
-    Input, input, L1, {enter}{esc}{tab}{backspace}{delete}{up}{down}{left}{right}{home}{end}{F4}{Ctrl}
+    Input, input, L1, {enter}{esc}{tab}{backspace}{delete}{up}{down}{left}{right}{home}{end}{F4}{Ctrl}{'}
 
     if ErrorLevel = EndKey:enter
     {
@@ -223,6 +221,21 @@ processUserInput(switcherId) {
       ControlFocus,  Edit1, ahk_id %switcherId%
       keys := AddModifierKeys("{del}")
       ControlSend, Edit1, %keys%, ahk_id %switcherId%
+      continue
+    }
+    else if ErrorLevel = EndKey:'
+    {
+      ControlFocus, SysListView321, ahk_id %switcherId%
+
+      ; When on last row, wrap tab next to top of list.
+      if LV_GetNext(0) = LV_GetCount()
+      {
+        LV_Modify(1, "Select")
+        LV_Modify(1, "Focus")
+      } else {
+        ControlSend, SysListView321, {down}, ahk_id %switcherId%
+      }
+
       continue
     }
     else if ErrorLevel = EndKey:up

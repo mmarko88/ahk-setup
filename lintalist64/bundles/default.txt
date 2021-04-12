@@ -4,11 +4,6 @@ Description: Default bundle for Lintalist
 Author: Lintalist
 TitleMatch: 
 Patterns:
-- LLPart1: Disconnect all network drives
-  LLPart2: net use / delete *
-  LLKey: 
-  LLShorthand: disconn
-  LLScript: 
 - LLPart1: debug hsqldb
   LLPart2: 
   LLKey: 
@@ -16,6 +11,11 @@ Patterns:
   LLScript: org.hsqldb.util.DatabaseManagerSwing.main(new String[] {
   "--url",  "jdbc:hsqldb:mem:testdb", "--noexit"
 });
+- LLPart1: Disconnect all network drives
+  LLPart2: net use / delete *
+  LLKey: 
+  LLShorthand: disconn
+  LLScript: 
 - LLPart1: Tab shifter intellij shourcuts
   LLPart2: alt+shift+] - shift tab right
 alt+shift+[ - shift tab left

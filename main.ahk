@@ -37,14 +37,15 @@ SetWorkingDir %A_ScriptDir%  ; Ensures a consistent starting directory.
 +#,::GoToPrevDesktop()
 +#.::GoToNextDesktop()
 
-#+Q::CloseActiveWindow()
+#q::CloseActiveWindow()
+#+Q::lockPC()  ;; Turn off monitor after locking system
 #i::showInfo()
 ; enter as a hotkey Enter::Send {Enter} !Enter::Send !{Enter}
-Enter::Send {Enter}
-+Enter::Send +{Enter}
-^Enter::Send ^{Enter}
-^!Enter::Send ^!{Enter}
-Enter & w::stayAwake()
+;Enter::Send {Enter}
+;!Enter::Send !{Enter}
+;+Enter::Send +{Enter}
+;^Enter::Send ^{Enter}
+;^!Enter::Send ^!{Enter}
 
 ;LWin & o::ToggleWinMinimize()
 #w::stayAwake()
@@ -52,7 +53,6 @@ Enter & w::stayAwake()
 #>:: moveWindowToNextMonitor()
 #[:: moveWindowToPreviousMonitor()
 #]:: moveWindowToNextMonitor()
-#+Esc::lockPC()  ;; Turn off monitor after locking system
 ^+#Space::ToggleTaskBarAndStart()
 #WheelUp:: changeOpasity(10)
 #WheelDown:: changeOpasity(-10)
@@ -63,11 +63,12 @@ Enter & w::stayAwake()
 #p::togglePinActiveWindow()
 #a::AlwaysOnTop()
 #c::copyActiveWindowPathToClipboard()
+PgDn::Send {Down}
+pgUp::Send {Up}
+
 #Enter::startProgram("cmd.exe c:\")
 #+Enter::startProgram("explorer.exe C:\")
 #+c::startProgram("C:\Program Files\Google Chrome (Local)\chrome.exe --ssl-version-min=tls1 --ssl-version-fallback-min=tls1 --no-default-browser-check")
-PgDn::Send {Down}
-PgUp::Send {Up}
 
 CapsLock & m::Send {End}
 CapsLock & y::Send {PrintScreen}
@@ -78,27 +79,49 @@ CapsLock & ,::Send {PgDn}
 CapsLock & Backspace::Send {Del}
 
 CapsLock & F12::Suspend ; Suspend AutoHotKey
-Enter & Esc::Send {~}
+Shift & Esc::Send {~}
+
+
+
+;CapsLock & h::Send #{Left}
+;CapsLock & j::Send #{Down}
+;CapsLock & k::Send #{Up}
+;CapsLock & l::Send #{Right}
+
+;Tab::Send {Tab}
+;!Tab::Send !{Tab}
+;#Tab::Send #{Tab}
+;^Tab::Send ^{Tab}
+;+Tab::Send +{Tab}
+;
+;Tab & h::Send {Left}
+;Tab & j::Send {Down}
+;Tab & k::Send {Up}
+;Tab & l::Send {Right}
+;Tab & e::Send ^{Right}
+;Tab & b::Send ^{Left}
+
+CapsLock & h::Send {Left}
+CapsLock & j::Send {Down}
+CapsLock & k::Send {Up}
+CapsLock & l::Send {Right}
+CapsLock & e::Send ^{Right}
+CapsLock & b::Send ^{Left}
 
 CapsLock & g::Send {Home}
 
-CapsLock & h::Send #{Left}
-CapsLock & j::Send #{Down}
-CapsLock & k::Send #{Up}
-CapsLock & l::Send #{Right}
-
-CapsLock & 1::Send {F1}
-CapsLock & 2::Send {F2}
-CapsLock & 3::Send {F3}
-CapsLock & 4::Send {F4}
-CapsLock & 5::Send {F5}
-CapsLock & 6::Send {F6}
-CapsLock & 7::Send {F7}
-CapsLock & 8::Send {F8}
-CapsLock & 9::Send {F9}
-CapsLock & 0::Send {F10}
-CapsLock & -::Send {F11}
-CapsLock & =::Send {F12}
+;CapsLock & 1::Send {F1}
+;CapsLock & 2::Send {F2}
+;CapsLock & 3::Send {F3}
+;CapsLock & 4::Send {F4}
+;CapsLock & 5::Send {F5}
+;CapsLock & 6::Send {F6}
+;CapsLock & 7::Send {F7}
+;CapsLock & 8::Send {F8}
+;CapsLock & 9::Send {F9}
+;CapsLock & 0::Send {F10}
+;CapsLock & -::Send {F11}
+;CapsLock & =::Send {F12}
 
 ; Media keys
 CapsLock & [::Send {Volume_Down}

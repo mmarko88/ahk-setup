@@ -4,27 +4,18 @@ Description: Default bundle for Lintalist
 Author: Lintalist
 TitleMatch: 
 Patterns:
-- LLPart1:     //TODO: Test when invalid MUP user
-    //TODO: Regular test
-    //TODO: wrong identity
-    //TODO: no mandatory parameters
-    //TODO: no data returned from fetchDistributionList
-    //TODO: all invalid MUP users
-    //TODO: validate category and subcategory
-    //TODO: email template is null
-    //TODO: email template is random string
-    //TODO: bcc addresses
-
-  LLPart2: 
-  LLKey: 
-  LLShorthand: testsTodo
-  LLScript: 
 - LLPart1: Disconnect all network drives
   LLPart2: net use / delete *
   LLKey: 
   LLShorthand: disconn
   LLScript: 
-
+- LLPart1: debug hsqldb
+  LLPart2: 
+  LLKey: 
+  LLShorthand: 
+  LLScript: org.hsqldb.util.DatabaseManagerSwing.main(new String[] {
+  "--url",  "jdbc:hsqldb:mem:testdb", "--noexit"
+});
 - LLPart1: Tab shifter intellij shourcuts
   LLPart2: alt+shift+] - shift tab right
 alt+shift+[ - shift tab left
@@ -36,23 +27,30 @@ ctrl+alt+= - equal size splitter
 alt+shift+M - maximize/restore splitter
   LLKey: 
   LLShorthand: 
-  LLScript:
+  LLScript: 
+- LLPart1: //TODO: Test when invalid MUP user
+    //TODO: Regular test
+    //TODO: wrong identity
+    //TODO: no mandatory parameters
+    //TODO: no data returned from fetchDistributionList
+    //TODO: all invalid MUP users
+    //TODO: validate category and subcategory
+    //TODO: email template is null
+    //TODO: email template is random string
+    //TODO: bcc addresses
+  LLPart2: 
+  LLKey: 
+  LLShorthand: testsTodo
+  LLScript: 
 - LLPart1: Najbolje tastature:
 Razer BlackWidow Elite
 Corsair K95 RGB PLATINUM XT
   LLPart2: 
   LLKey: 
   LLShorthand: 
-  LLScript:
+  LLScript: 
 - LLPart1: https://teams.microsoft.com/l/file/0540A2F7-FED6-4211-B0C8-0C0E5568EC04?tenantId=282a3295-5c42-4d93-9ec1-6631001cc5f7&fileType=xlsx&objectUrl=https%3A%2F%2Fblackrock.sharepoint.com%2Fteams%2Ficdeployment%2FShared%20Documents%2FNew%20Admin%20-%20Project%2FCompatibility%20Matrix.xlsx&baseUrl=https%3A%2F%2Fblackrock.sharepoint.com%2Fteams%2Ficdeployment&serviceName=teams&threadId=19:ff852bef2192492fa191eba939a49f6e@thread.skype&groupId=0d953a85-1838-46fc-ab77-77d38dbaaecb
   LLPart2: 
   LLKey: 
   LLShorthand: 
-  LLScript:
-- LLPart1: debug hsqldb
-  LLPart2: 
-  LLKey: 
-  LLShorthand: 
-  LLScript: org.hsqldb.util.DatabaseManager.main(new String[] {
-  "--url",  "jdbc:hsqldb:mem:testdb", "--noexit"
-});
+  LLScript: 
