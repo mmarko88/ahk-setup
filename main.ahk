@@ -1,14 +1,26 @@
-﻿#NoEnv  ; Recommended for performance and compatibility with future AutoHotkey releases.
+#NoEnv  ; Recommended for performance and compatibility with future AutoHotkey releases.
 ;#Warn  ; Enable warnings to assist with detecting common errors.
 SendMode Input  ; Recommended for new scripts due to its superior speed and reliability.
 SetWorkingDir %A_ScriptDir%  ; Ensures a consistent starting directory.
 #SingleInstance force
+
+; https://stackoverflow.com/questions/65961435/how-to-disable-the-71-keys-pressed-in-the-last-window - check for documentation
+#MaxHotkeysPerInterval 1000
+#HotkeyInterval 2000
+
+brightness := 75
+contrast := 75
 
 #Include features/virtualDesktop.ahk
 #Include features/favorites.ahk
 #Include features/util.ahk
 #Include features/winExplorer.ahk
 #Include features/ResourceMonitor.ahk
+
+; ! - Alt
+; # - Win
+; ^ - Ctrl
+; + - Shift
 
 
 #1::ChangeDesktop(0)
@@ -54,8 +66,8 @@ SetWorkingDir %A_ScriptDir%  ; Ensures a consistent starting directory.
 #[:: moveWindowToPreviousMonitor()
 #]:: moveWindowToNextMonitor()
 ^+#Space::ToggleTaskBarAndStart()
-#WheelUp:: changeOpasity(10)
-#WheelDown:: changeOpasity(-10)
+^#WheelUp:: changeOpasity(10)
+^#WheelDown:: changeOpasity(-10)
 #{:: changeOpasity(10)
 #}:: changeOpasity(-10)
 #Esc::toggleTaskManager()
@@ -63,24 +75,40 @@ SetWorkingDir %A_ScriptDir%  ; Ensures a consistent starting directory.
 #p::togglePinActiveWindow()
 #a::AlwaysOnTop()
 #c::copyActiveWindowPathToClipboard()
-PgDn::Send {Down}
-pgUp::Send {Up}
+
+
+
+#k::incBrightness()
+#j::decBrightness()
 
 #Enter::startProgram("cmd.exe c:\")
 #+Enter::startProgram("explorer.exe C:\")
-#+c::startProgram("C:\Program Files\Google Chrome (Local)\chrome.exe --ssl-version-min=tls1 --ssl-version-fallback-min=tls1 --no-default-browser-check")
+#+c::startProgram("C:\Program Files\Google Chrome (Local)\chrome.exe")
+#+I::startProgram("C:\Program Files\JetBrains\IntelliJ IDEA 2022.2.4\bin\idea64.exe")
 
-CapsLock & m::Send {End}
-CapsLock & y::Send {PrintScreen}
-CapsLock & u::Send {ScrollLock}
-CapsLock & i::Send {Pause}
-CapsLock & n::Send {Del}
-CapsLock & ,::Send {PgDn}
+
+CapsLock & w::Send ^+{Right}
+
+CapsLock & h::Send {Left}
+CapsLock & j::Send {Down}
+CapsLock & k::Send {Up}
+CapsLock & l::Send {Right}
+CapsLock & e::Send ^+{Right}
+CapsLock & b::Send ^+{Left}
+CapsLock & u::Send ^{z}
+CapsLock & r::Send ^{y}
+
+CapsLock & 4::Send +{End}
+CapsLock & 0::Send +{Home}
+CapsLock & x::Send {BackSpace}
 CapsLock & Backspace::Send {Del}
 
 CapsLock & F12::Suspend ; Suspend AutoHotKey
-Shift & Esc::Send {~}
+; this was setting for royal kludge tk61 keyboard
+;Shift & Esc::Send {~}
 
+CapsLock & m::SoundSet, +1,, Mute
+CapsLock & Space::SoundSet, 1, Microphone, Mute
 
 
 ;CapsLock & h::Send #{Left}
@@ -101,14 +129,7 @@ Shift & Esc::Send {~}
 ;Tab & e::Send ^{Right}
 ;Tab & b::Send ^{Left}
 
-CapsLock & h::Send {Left}
-CapsLock & j::Send {Down}
-CapsLock & k::Send {Up}
-CapsLock & l::Send {Right}
-CapsLock & e::Send ^{Right}
-CapsLock & b::Send ^{Left}
 
-CapsLock & g::Send {Home}
 
 ;CapsLock & 1::Send {F1}
 ;CapsLock & 2::Send {F2}
@@ -124,8 +145,45 @@ CapsLock & g::Send {Home}
 ;CapsLock & =::Send {F12}
 
 ; Media keys
+; ! - Alt
+; # - Win
+; ^ - Ctrl
+; + - Shift
 CapsLock & [::Send {Volume_Down}
 CapsLock & ]::Send {Volume_Up}
+
+^+WheelDown::Send {Right}
+^+WheelUp::Send {Left}
+
+!^+WheelDown::Send {Right}
+!^+WheelUp::Send {Left}
+
++WheelDown::Send {Volume_Up}
++WheelUp::Send {Volume_Down}
+
+!WheelDown::Send {WheelRight}
+!WheelUp::Send {WheelLeft}
+
+!^WheelDown::Send ^{Tab}
+!^WheelUp::Send +^{Tab}
+
+CapsLock::return
+
+; This script will toggle your default Windows Audio Output device if you have 2 enabled audio devices.
+; For more audio devices, contact me at https://davidvielmetter.com/contact/
+; This script maps to Win+A hot key combo once activated!
+#F13::
+Run, mmsys.cpl
+WinWait,Sound
+ControlSend,SysListView321,{Up 2}
+ControlGet, isEnabled, Enabled,,&Set Default
+if(!isEnabled)
+{
+  ControlSend,SysListView321,{Down}
+}
+ControlClick,&Set Default
+ControlClick,OK
+return
 
 lockPC() {
     Run, regedit.exe /s "enableWinLock.reg"
@@ -143,6 +201,7 @@ lockPC() {
 copyActiveWindowPathToClipboard() {
 	WinGet, activePath, ProcessPath, % "ahk_id" winActive("A")	; activePath is the output variable and can be named anything you like, ProcessPath is a fixed parameter, specifying the action of the winget command.
 	Clipboard := activePath 
+    
 }
 
 restoreWindow() {
@@ -157,17 +216,30 @@ restoreWindow() {
     }
 }
 
-doNothing() {
-    
-}
-
-
 moveWindowToPreviousMonitor() {
     Send #+{Left}
 }
 
 moveWindowToNextMonitor() {
     Send #+{Right}
+}
+
+
+
+incBrightness() {
+	global brightness
+	brightness := brightness + 5
+	command := "ddm /SetBrightnessLevel " . brightness
+	startProgram(command)
+	showOsd("Brightness: " . brightness)
+}
+
+decBrightness() {
+	global brightness
+	brightness := brightness - 5
+	command := "ddm /SetBrightnessLevel " . brightness
+	startProgram(command)
+	showOsd("Brightness: " . brightness)
 }
 
 

@@ -69,7 +69,7 @@ else
 
 ; Used to reliably determine whether script is compiled:
 SplitPath, A_ScriptName,,, f_FileExt
-f_FavoritesFile = %A_ScriptDir%\Favorites.ini
+f_FavoritesFile = C:\BLKDeveloper\apps\ahk\features\Favorites.ini
 ;; add clipboard action
 Menu, Favorites, Add, Clipboard, f_OpenFavorite
 
