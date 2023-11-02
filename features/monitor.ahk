@@ -188,4 +188,9 @@ RemoveToolTip:
 	Gui, osdvd: Destroy
 	return
 	
+<<<<<<< HEAD
 }
+=======
+}
+
+>>>>>>> work

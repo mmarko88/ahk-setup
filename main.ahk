@@ -77,6 +77,7 @@ SetWorkingDir %A_ScriptDir%  ; Ensures a consistent starting directory.
 #+Enter::startProgram("explorer.exe C:\")
 #+c::startProgram("C:\Program Files\Google Chrome (Local)\chrome.exe")
 #+I::startProgram("C:\Program Files (x86)\JetBrains\IntelliJ IDEA 2021.3.1\bin\idea64.exe")
+#BackSpace::startProgram("C:\BLKDeveloper\apps\ahk\features\switchPlayback.ahk")
 
 
 CapsLock & w::Send ^+{Right}
